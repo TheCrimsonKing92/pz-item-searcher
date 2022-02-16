@@ -29,6 +29,8 @@ function ItemSearchPanel:create()
         button.borderColor = self.buttonBorderColor;
 
         self.addChild(button);
+
+        return button;
     end
     -- Add entry box for item input
     local buttonHeight = SMALL_FONT + 2 * 4;
@@ -40,11 +42,8 @@ function ItemSearchPanel:create()
     itemEntry:instantiate();
     self.addChild(self.itemEntry);
 
-    local close = makeButton(self:getWidth() - buttonWidth - 5, self:getHeight() - padBottom - buttonHeight, buttonWidth, buttonHeight, "Close");
-    self:addChild(self.close);
-
-    local search = makeButton(5, self:getHeight() - padBottom - buttonHeight, buttonWidth, buttonHeight, "Search");
-    self:addChild(self.search);
+    self.close = makeButton(self:getWidth() - buttonWidth - 5, self:getHeight() - padBottom - buttonHeight, buttonWidth, buttonHeight, "Close");
+    self.search = makeButton(5, self:getHeight() - padBottom - buttonHeight, buttonWidth, buttonHeight, "Search");
 end
 
 function ItemSearchPanel:new()
