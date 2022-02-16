@@ -1,0 +1,5 @@
+name=Item Searcher
+poster=poster.png
+id=ItemSearcher
+description=Adds a convenient method to make characters search for specific items in nearby containers
+url=https://github.com/TheCrimsonKing92/pz-item-searcher
