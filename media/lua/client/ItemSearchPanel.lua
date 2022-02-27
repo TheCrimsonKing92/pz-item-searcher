@@ -3,6 +3,8 @@ local SMALL_FONT = getTextManager():getFontHeight(UIFont.Small)
 
 ITEMSEARCH_PERSISTENT_DATA = {};
 
+local uiOpen = false;
+
 ItemSearchPanel = ISPanel:derive("ItemSearchPanel");
 
 function ItemSearchPanel:initialise()
@@ -67,20 +69,35 @@ end
 
 function ItemSearchPanel:onOptionMouseDown(button, x, y)
     if button.id == "CLOSE" then
+        print("Need to close (due to mouse)");
         self:setVisible(false);
         self.removeFromUIManager();
     end
 
     if button.id == "SEARCH" then
+        print("need to search");
         -- Queue search actions!
     end
 end
 
 function onCustomUIKeyPressed(key)
-    if key == 0 then
-        local panel = ItemSearchPanel:new();
-        panel.initialize();
-        panel.addToUIManager();
+    print("We executin' key handling yo");
+    if key == 40 then
+        print("It's the custom key dawg");
+        if uiOpen then
+            print("We closin' the UI my dude");
+            self:setVisible(false);
+            self.removeFromUIManager();
+            uiOpen = false;
+        else
+            print("We openin' the UI my dude");
+            local panel = ItemSearchPanel:new();
+            panel.initialise();
+            panel.addToUIManager();
+            uiOpen = true;
+        end
+    else
+        print("We don't handle that key dawg");
     end
 end
 
