@@ -3,6 +3,7 @@ local SMALL_FONT = getTextManager():getFontHeight(UIFont.Small)
 
 ITEMSEARCH_PERSISTENT_DATA = {};
 
+local ui = null;
 local uiOpen = false;
 
 ItemSearchPanel = ISPanel:derive("ItemSearchPanel");
@@ -15,6 +16,9 @@ end
 function ItemSearchPanel:prerender()
     ISPanel.prerender(self);
     -- Draw basic text, etc.
+    -- text, x, y, r, g, b, a, font size
+    self:drawText("Item Searcher", 90, 10, 1, 1, 1, 1, UIFont.Medium);
+    self:drawText("Search for what item?", 10, 40, 1, 1, 1, 1, UIFont.Small);
 end
 
 function ItemSearchPanel:render()    
@@ -39,13 +43,31 @@ function ItemSearchPanel:create()
     local buttonWidth = 75;
     local padBottom = 10;
 
-    local itemEntry = ISTextEntryBox:new("Search for what item?", 25, 40, 150, buttonHeight);
-    itemEntry:initialise();
-    itemEntry:instantiate();
-    self.addChild(self.itemEntry);
+    local textSize = getTextManager():MeasureStringX(UIFont.Small, "Search for what item?");
 
-    self.close = makeButton(self:getWidth() - buttonWidth - 5, self:getHeight() - padBottom - buttonHeight, buttonWidth, buttonHeight, "Close");
-    self.search = makeButton(5, self:getHeight() - padBottom - buttonHeight, buttonWidth, buttonHeight, "Search");
+    local id = "Input";    
+    -- 10 is our left-margin, 5 to separate the box from the label, the rest from the text itself
+    self.itemEntry = ISTextEntryBox:new("", 12 + textSize, 40, 150, buttonHeight);
+    self.itemEntry.id = id;
+    self.itemEntry:initialise();
+    self.itemEntry:instantiate();
+    self:addChild(self.itemEntry);
+
+    id = "Close";
+    self.close = ISButton:new(self:getWidth() - buttonWidth - 10, self:getHeight() - padBottom - buttonHeight, buttonWidth, buttonHeight, id, self, ItemSearchPanel.onOptionMouseDown);
+    self.close.id = id;
+    self.close.borderColor = self.buttonBorderColor;
+    self.close:initialise();
+    self.close:instantiate();
+    self:addChild(self.close);
+
+    id = "Search";
+    self.search = ISButton:new(10, self:getHeight() - padBottom - buttonHeight, buttonWidth, buttonHeight, id, self, ItemSearchPanel.onOptionMouseDown);
+    self.search.id = id;
+    self.search.borderColor = self.buttonBorderColor;
+    self.search:initialise();
+    self.search:instantiate();
+    self:addChild(self.search);
 end
 
 function ItemSearchPanel:new()
@@ -53,7 +75,7 @@ function ItemSearchPanel:new()
     local x = getMouseX() + 10;
     local y = getMouseY() + 10;
 
-    o = ISPanel:new(x, y, 100, 200);
+    o = ISPanel:new(x, y, 300, 200);
     setmetatable(o, self);
     self.__index = self;
 
@@ -68,14 +90,47 @@ function ItemSearchPanel:new()
 end
 
 function ItemSearchPanel:onOptionMouseDown(button, x, y)
-    if button.id == "CLOSE" then
+    if button.id == "Close" then
         print("Need to close (due to mouse)");
         self:setVisible(false);
-        self.removeFromUIManager();
+        self:removeFromUIManager();
+        ui = null;
+        uiOpen = false;
     end
 
-    if button.id == "SEARCH" then
-        print("need to search");
+    if button.id == "Search" then
+        print("Internal search value is: ", self.itemEntry:getInternalText());
+        local player = getPlayer();
+        print("Got player", player);
+        local playerNum = player:getPlayerNum();
+        local inventory = getPlayerInventory(playerNum);
+        local loot = getPlayerLoot(playerNum);
+
+        local containerList = {};
+        for i,v in ipairs(inventory.inventoryPane.inventoryPage.backpacks) do
+            print("inserting container from player inventory: ", v.inventory);
+            -- this is a Java list, you can't use Lua's ipairs or other methods to manipulate it
+            local it = v.inventory:getItems();
+            for x = 0, it:size()-1 do
+                local item = it:get(x);
+                print("Found thing in inventory container: ", item);
+                local cat = item:getCategory();
+                local type = item:getType();
+                print("item category: ", cat, ", item type: ", type);
+            end
+            table.insert(containerList, v.inventory);
+        end
+
+        for i,v in ipairs(loot.inventoryPane.inventoryPage.backpacks) do
+            print("inserting container from loot: ", v.inventory)
+            local it = v.inventory:getItems();
+            for x = 0, it:size()-1 do
+                local item = it:get(x);
+                print("Found thing in loot container: ", item);
+            end
+            table.insert(containerList, v.inventory);
+        end
+        print(containerList);
         -- Queue search actions!
     end
 end
@@ -86,14 +141,16 @@ function onCustomUIKeyPressed(key)
         print("It's the custom key dawg");
         if uiOpen then
             print("We closin' the UI my dude");
-            self:setVisible(false);
-            self.removeFromUIManager();
+            ui:setVisible(false);
+            ui:removeFromUIManager();
+            ui = null;
             uiOpen = false;
         else
             print("We openin' the UI my dude");
             local panel = ItemSearchPanel:new();
-            panel.initialise();
-            panel.addToUIManager();
+            panel:initialise();
+            panel:addToUIManager();
+            ui = panel;
             uiOpen = true;
         end
     else
