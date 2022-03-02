@@ -25,19 +25,6 @@ function ItemSearchPanel:render()
 end
 
 function ItemSearchPanel:create()
-    local function makeButton(x, y, width, height, title)
-        local id = string.upper(title);
-        local button = ISButton:new(x, y, width, height, title, self, ItemSearchPanel.onOptionMouseDown);
-
-        button.id = id;
-        button.initialise();
-        button.instantiate();
-        button.borderColor = self.buttonBorderColor;
-
-        self.addChild(button);
-
-        return button;
-    end
     -- Add entry box for item input
     local buttonHeight = SMALL_FONT + 2 * 4;
     local buttonWidth = 75;
@@ -47,7 +34,7 @@ function ItemSearchPanel:create()
 
     local id = "Input";    
     -- 10 is our left-margin, 5 to separate the box from the label, the rest from the text itself
-    self.itemEntry = ISTextEntryBox:new("", 12 + textSize, 40, 150, buttonHeight);
+    self.itemEntry = ISTextEntryBox:new("", 15 + textSize, 40, 150, buttonHeight);
     self.itemEntry.id = id;
     self.itemEntry:initialise();
     self.itemEntry:instantiate();
@@ -90,6 +77,10 @@ function ItemSearchPanel:new()
 end
 
 function ItemSearchPanel:onOptionMouseDown(button, x, y)
+    local function setContains(set, key)
+        return set[key] ~= nil;
+    end
+
     if button.id == "Close" then
         print("Need to close (due to mouse)");
         self:setVisible(false);
@@ -99,7 +90,18 @@ function ItemSearchPanel:onOptionMouseDown(button, x, y)
     end
 
     if button.id == "Search" then
-        print("Internal search value is: ", self.itemEntry:getInternalText());
+        local searchText = self.itemEntry:getInternalText();
+        print("Internal search value is: " .. searchText);
+        if setContains(ITEMSEARCH_PERSISTENT_DATA.displayNameSet, searchText) then
+            local matches = ITEMSEARCH_PERSISTENT_DATA.itemsByDisplayName[searchText];
+            print("Exact match from persistent data on display name: ", ITEMSEARCH_PERSISTENT_DATA.itemsByDisplayName[searchText]);
+            for i, match in ipairs(matches) do
+                print(match:getDisplayName() .. ": " .. tostring(match:getType()) .. " - " .. match:getModuleName() .. "." .. match:getName());
+            end
+        else
+            print("No exact match found :( try a fuzzy match/contains shenanigans");
+        end
+
         local player = getPlayer();
         print("Got player", player);
         local playerNum = player:getPlayerNum();
@@ -113,10 +115,19 @@ function ItemSearchPanel:onOptionMouseDown(button, x, y)
             local it = v.inventory:getItems();
             for x = 0, it:size()-1 do
                 local item = it:get(x);
-                print("Found thing in inventory container: ", item);
+                local displayName = item:getDisplayName();
+                print("Found thing in inventory container: ", item:getDisplayName());
+
+                if searchText == displayName then
+                    print("FOUND IT BY DISPLAY NAME!");
+                    local char = getSpecificPlayer(playerNum);
+                    local message = "I have a " .. displayName .. " in my inventory";
+                    char:Say(message);
+                end
+
                 local cat = item:getCategory();
-                local type = item:getType();
-                print("item category: ", cat, ", item type: ", type);
+                local type = tostring(item:getType());
+                print("item category: " .. cat .. ", item type: " .. type);
             end
             table.insert(containerList, v.inventory);
         end
@@ -133,6 +144,49 @@ function ItemSearchPanel:onOptionMouseDown(button, x, y)
         print(containerList);
         -- Queue search actions!
     end
+end
+
+function cacheItems()
+    print("Startup, getting cache of items available for searching");
+    local allItems = getAllItems();
+
+    local function addTo(set, key)
+        set[key] = true;
+    end
+
+    local function setContains(set, key)
+        return set[key] ~= nil;
+    end
+
+    ITEMSEARCH_PERSISTENT_DATA.itemCache = allItems;
+    ITEMSEARCH_PERSISTENT_DATA.displayNameSet = {};
+    ITEMSEARCH_PERSISTENT_DATA.itemsByDisplayName = {};
+
+    for x = 0, allItems:size() -1 do
+        print("Found item in allItems arraylist");
+        local item = allItems:get(x);
+
+        local module = item:getModuleName();
+
+        local name = item:getName();
+
+        local type = item:getType();
+
+        local displayName = item:getDisplayName();
+
+        print("Display name: " .. item:getDisplayName());
+        if not setContains(ITEMSEARCH_PERSISTENT_DATA.displayNameSet) then
+            addTo(ITEMSEARCH_PERSISTENT_DATA.displayNameSet, displayName);
+            ITEMSEARCH_PERSISTENT_DATA.itemsByDisplayName[displayName] = { item };
+        else
+            table.insert(ITEMSEARCH_PERSISTENT_DATA.itemsByDisplayName[displayName], item)
+            print("We now have more than one item by the display name of " .. displayName);
+            for i, v in ipairs(ITEMSEARCH_PERSISTENT_DATA.itemsByDisplayName[displayName]) do
+                print(displayName .. "[" .. i .. "]" .. " Module: " .. v:getModuleName());
+            end
+        end
+    end
+    print("Should have cached display item info for " .. allItems:size() .. " items provided by getAllItems()");
 end
 
 function onCustomUIKeyPressed(key)
@@ -158,4 +212,5 @@ function onCustomUIKeyPressed(key)
     end
 end
 
+Events.OnGameBoot.Add(cacheItems);
 Events.OnCustomUIKeyPressed.Add(onCustomUIKeyPressed);
