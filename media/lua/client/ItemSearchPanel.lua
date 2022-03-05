@@ -2,12 +2,32 @@ require "ISUI/ISCollapsableWindow"
 require "ISUI/ISPanel"
 local SMALL_FONT = getTextManager():getFontHeight(UIFont.Small)
 
+local alphas = {"a", "A", "b", "B", "c", "C", "d", "D", "e", "E", "f", "F", "g", "G", "h", "H", "i", "I", "j", "J", "k", "K", "l", 'L', 'm', 'M', 'n', 'N', 'o', 'O', 'p', 'P', 'q', 'Q', 'r', 'R', 's', 'S', 't', 'T', 'u', 'U', 'v', 'V', 'w', 'W', 'x', 'X', 'y', 'Y', 'z', 'Z'};
+local patternMagics = {"-"};
+local ALPHA_SET = {};
+local MAGIC_SET = {};
+for _, v in ipairs(alphas) do
+    ALPHA_SET[v] = true;
+end
+
+for _, v in ipairs(patternMagics) do
+    MAGIC_SET[v] = true;
+end
+
 ITEMSEARCH_PERSISTENT_DATA = {};
 
 local ui = null;
 local uiOpen = false;
 
 ItemSearchPanel = ISCollapsableWindow:derive("ItemSearchPanel");
+
+local print = function(...)
+    print("[ItemSearcher] - ", ...);
+end
+
+local function setContains(set, key)
+    return set[key] ~= nil;
+end
 
 function ItemSearchPanel:close()
     print("UI be closin' (via the built-in close button)");
@@ -69,6 +89,33 @@ function ItemSearchPanel:create()
 end
 --]]
 
+function ItemSearchPanel:createSearchPattern(input)
+    local patternTable = {};
+
+    local function isMagic(char)
+        return setContains(MAGIC_SET, char);
+    end
+
+    local function whitelisted(char)
+        return setContains(ALPHA_SET, char);
+    end
+
+    for i = 1, #input do
+        local char = input:sub(i, i);
+
+        if whitelisted(char) then
+            local charPattern = {"[", char:lower(), char:upper(), "]"};
+            patternTable[#patternTable + 1] = table.concat(charPattern, "")
+        elseif isMagic(char) then
+            patternTable[#patternTable + 1] = "%" .. char;
+        else
+            patternTable[#patternTable + 1] = char;
+        end
+    end
+    
+    return table.concat(patternTable, "");
+end
+
 function ItemSearchPanel:new()
     local o = {};
     local x = getMouseX() + 10;
@@ -89,20 +136,74 @@ function ItemSearchPanel:new()
 end
 
 function ItemSearchPanel:search()
-    local function setContains(set, key)
-        return set[key] ~= nil;
+    local ipairs = ipairs;
+    local pairs = pairs;
+
+    local function endsWith(str, ending)
+        return ending == "" or str:sub(-#ending) == ending;
+    end
+
+    local nameSet = ITEMSEARCH_PERSISTENT_DATA.displayNameSet;
+
+    local function findBestMatch(searchPattern)
+        local result = nil;
+
+        local potentialMatchBegin = nil;
+        local potentialMatchEnd = nil;
+        local thisBegin = nil;
+        local thisEnd = nil;
+
+        for k, _ in pairs(nameSet) do
+            thisBegin, thisEnd = string.find(k, searchPattern);
+
+            if thisBegin ~= nil then
+                print("Search pattern: " .. searchPattern .. ", current item: " .. k .. ", begin index: " .. thisBegin .. ", end index: " .. thisEnd);
+                if thisBegin == 1 then
+                    return k;
+                end
+    
+                if result == nil or ((thisBegin < potentialMatchBegin) or (thisBegin == potentialMatchBegin and thisEnd < potentialMatchEnd)) then
+                    result = k;
+                    potentialMatchBegin = thisBegin;
+                    potentialMatchEnd = thisEnd;
+                end;
+            end
+        end
     end
 
     local searchText = self.itemEntry:getInternalText();
-    print("Internal search value is: " .. searchText);
-    if setContains(ITEMSEARCH_PERSISTENT_DATA.displayNameSet, searchText) then
+    print("Entered search value is: " .. searchText);
+    
+    local exactMatch = setContains(nameSet, searchText);
+    local displayName = nil;
+
+    if exactMatch then
         local matches = ITEMSEARCH_PERSISTENT_DATA.itemsByDisplayName[searchText];
         print("Exact match from persistent data on display name: ", ITEMSEARCH_PERSISTENT_DATA.itemsByDisplayName[searchText]);
         for i, match in ipairs(matches) do
             print(match:getDisplayName() .. ": " .. tostring(match:getType()) .. " - " .. match:getModuleName() .. "." .. match:getName());
+            -- TODO: If we truly have multiple items, this will always take the last match found, making this non-deterministic
+            displayName = match:getDisplayName();
         end
+    end
+
+    if displayName == nil then
+        local searchPattern = self:createSearchPattern(searchText);
+        print("Generated search pattern is: " .. searchPattern);
+        displayName = findBestMatch(searchPattern);
+
+        if displayName ~= nil then
+            print("Best match found via pattern was: " .. displayName);
+        else
+            print("No match found via pattern");
+        end
+    end
+
+    if displayName == nil then
+        print("No match found, out of options :(");
+        return;
     else
-        print("No exact match found :( try a fuzzy match/contains shenanigans");
+        print("The match we found was: " .. displayName);
     end
 
     local player = getPlayer();
@@ -112,27 +213,45 @@ function ItemSearchPanel:search()
     local loot = getPlayerLoot(playerNum);
 
     local containerList = {};
+    local foundItem = false;
     for i,v in ipairs(inventory.inventoryPane.inventoryPage.backpacks) do
+        if foundItem then
+            break;
+        end
+
         print("inserting container from player inventory: ", v.inventory);
+        local localInventory = v.inventory;
         -- this is a Java list, you can't use Lua's ipairs or other methods to manipulate it
-        local it = v.inventory:getItems();
+        local it = localInventory:getItems();
         for x = 0, it:size()-1 do
             local item = it:get(x);
-            local displayName = item:getDisplayName();
-            print("Found thing in inventory container: ", item:getDisplayName());
+            local currentDisplayName = item:getDisplayName();
+            print("Found thing in inventory container: " .. currentDisplayName);
 
-            if searchText == displayName then
-                print("FOUND IT BY DISPLAY NAME!");
+            if displayName == currentDisplayName then
+                foundItem = true;
                 local char = getSpecificPlayer(playerNum);
-                local message = "I have a " .. displayName .. " in my inventory";
-                char:Say(message);
-            end
+                local fullType = item:getFullType();
+                -- Ask the InventoryContainer for the count, not including items that can be drained, recursing through inventory container items
+                local count = localInventory:getNumberOfItem(fullType, false, true);
+                print("Count of item from getNumberOfItems(fullType: " .. fullType .. ", false, true): " .. count);
+                local message = "";
 
-            local cat = item:getCategory();
-            local type = tostring(item:getType());
-            print("item category: " .. cat .. ", item type: " .. type);
+                if count == 1 then
+                    message = "I have a " .. displayName .. " in my inventory";
+                else
+                    -- TODO refactor to pluralize function
+                    if endsWith(displayName, "s") then
+                        message = "I have " .. count .. " " .. displayName .. " in my inventory";
+                    else
+                        message = "I have " .. count .. " " .. displayName .. "s in my inventory";
+                    end
+                end
+                char:Say(message);
+                break;
+            end
         end
-        table.insert(containerList, v.inventory);
+        table.insert(containerList, localInventory);
     end
 
     for i,v in ipairs(loot.inventoryPane.inventoryPage.backpacks) do
@@ -164,8 +283,8 @@ function cacheItems()
     ITEMSEARCH_PERSISTENT_DATA.displayNameSet = {};
     ITEMSEARCH_PERSISTENT_DATA.itemsByDisplayName = {};
 
-    for x = 0, allItems:size() -1 do
-        print("Found item in allItems arraylist");
+    local javaItemsSize = allItems:size();
+    for x = 0, javaItemsSize -1 do
         local item = allItems:get(x);
 
         local module = item:getModuleName();
@@ -176,7 +295,6 @@ function cacheItems()
 
         local displayName = item:getDisplayName();
 
-        print("Display name: " .. item:getDisplayName());
         if not setContains(ITEMSEARCH_PERSISTENT_DATA.displayNameSet) then
             addTo(ITEMSEARCH_PERSISTENT_DATA.displayNameSet, displayName);
             ITEMSEARCH_PERSISTENT_DATA.itemsByDisplayName[displayName] = { item };
@@ -188,7 +306,7 @@ function cacheItems()
             end
         end
     end
-    print("Should have cached display item info for " .. allItems:size() .. " items provided by getAllItems()");
+    print("Done starting up, should have cached display item info for " .. javaItemsSize .. " items provided by getAllItems()");
 end
 
 function onCustomUIKeyPressed(key)
