@@ -78,7 +78,7 @@ local function findBestMatch(originalLength, searchPattern)
 end
 
 local print = function(...)
-    print("[ItemSearcher] - ", ...);
+    print("[ItemSearcher (ItemSearchPanel)] - ", ...);
 end
 
 local function setContains(set, key)
@@ -442,7 +442,7 @@ function ItemSearchPanel:search()
     end
 
     -- TODO Attempt to find the item in other cells with containers (or even on the floor)
-    local room = player:getSquare():getRoom();
+    local room = self.player:getSquare():getRoom();
     local building = room:getBuilding();
     print("Inside building id: " .. building:getID());
 

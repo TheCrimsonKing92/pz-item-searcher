@@ -10,6 +10,10 @@ local LARGE_FONT = textManager:getFontHeight(UIFont.Large);
 
 local HEADER_HEIGHT = MEDIUM_FONT + 2 * 2;
 
+local print = function(...)
+    print("[ItemSearcher (SearchChoiceTable)] - ", ...);
+end
+
 function SearchChoiceTable:chooseItem(item)
     -- Pass back/confirm to parent
     print("Chose item : " .. tostring(item));
