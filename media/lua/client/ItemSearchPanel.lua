@@ -40,6 +40,8 @@ local function findBestMatch(originalLength, searchPattern)
     local thisEnd = nil;
 
     local isBetterMatch = function(newBegin, newEnd, newLength)
+        print("isBetterMatch called with newBegin: " .. newBegin .. ", newEnd: " .. newEnd .. ", newLength: " .. newLength);
+        print("potentialMatchBegin: " .. tostring(potentialMatchBegin) .. ", potentialMatchEnd: " .. tostring(potentialMatchEnd) .. ", potentialMatchLength: " .. tostring(potentialMatchLength));
         if result == nil then
             return true;
         end
@@ -54,6 +56,7 @@ local function findBestMatch(originalLength, searchPattern)
     end
 
     for k, _ in pairs(nameSet) do
+        print("Checking match against: " .. k);
         thisBegin, thisEnd = string.find(k, searchPattern);
 
         local thisLength = string.len(k);
@@ -66,10 +69,12 @@ local function findBestMatch(originalLength, searchPattern)
                 result = k;
                 potentialMatchBegin = thisBegin;
                 potentialMatchEnd = thisEnd;
-                potentialMatchEnd = thisLength;
+                potentialMatchLength = thisLength;
             end;
         end
     end
+
+    return result;
 end
 
 local print = function(...)
@@ -78,6 +83,22 @@ end
 
 local function setContains(set, key)
     return set[key] ~= nil;
+end
+
+local function splitString(input, separator)
+    separator = separator or "%s";
+
+    local t = {};
+
+    for str in string.gmatch(input, "([^" .. separator .. "]+)") do
+        table.insert(t, str);
+    end
+
+    return t;
+end
+
+local function startsWith(str, starting)
+    return starting == "" or string.sub(str, 1, #starting) == starting;
 end
 
 function ItemSearchPanel:close()
@@ -104,6 +125,33 @@ function ItemSearchPanel:createChildren()
     self.itemEntry:instantiate();
     self.itemEntry.onCommandEntered = function () self:search() end;
     self:addChild(self.itemEntry);
+
+    -- x, y, width, height, name, changeOptionTarget, changeOptionMethod, changeOptionArg1, changeOptionArg2
+    self.searchInventoryTick = ISTickBox:new(10, 60, 10, 10, "", nil, nil);
+    self.searchInventoryTick:initialise();
+    self.searchInventoryTick:instantiate();
+    self.searchInventoryTick.selected[1] = true;
+    self.searchInventoryTick:addOption("Search Inventory");
+    self:addChild(self.searchInventoryTick);
+
+    self.searchRoomTick = ISTickBox:new(10, 85, 10, 10, "", nil, nil);
+    self.searchRoomTick:initialise();
+    self.searchRoomTick:instantiate();
+    self.searchRoomTick.selected[1] = true;
+    self.searchRoomTick:addOption("Search Room");
+    self:addChild(self.searchRoomTick);
+
+    self.searchBuildingTick = ISTickBox:new(10, 110, 10, 10, "", nil, nil);
+    self.searchBuildingTick:initialise();
+    self.searchBuildingTick:instantiate();
+    self.searchBuildingTick.selected[1] = true;
+    self.searchBuildingTick:addOption("Search Building");
+    self:addChild(self.searchBuildingTick);
+
+    -- x, y, width, height, inventory, zoom
+    self.searchChoices = SearchChoiceTable:new(10, 140, 280, 120, self.playerNum);
+    self.searchChoices:initialise();
+    self:addView("All", self.searchChoices);
 end
 
 function ItemSearchPanel:update()
@@ -112,8 +160,7 @@ function ItemSearchPanel:update()
     -- update size of entire window if internal element size updates
 end
 
-function ItemSearchPanel:render()    
-    -- Entry label
+function ItemSearchPanel:render()
     -- Would not show up when put in createChildren. Perhaps overwritten/over-rendered by built-in ISCollapsableWindow functionality
     self:drawText("Search for what item?", 10, 40, 1, 1, 1, 1, UIFont.Small);
 end
@@ -146,69 +193,12 @@ function ItemSearchPanel:createSearchPattern(input)
     return table.concat(patternTable, "");
 end
 
-function ItemSearchPanel:new()
-    local o = {};
-    local x = getMouseX() + 10;
-    local y = getMouseY() + 10;
-
-    o = ISCollapsableWindow:new(x, y, 300, 100);
-    setmetatable(o, self);
-    self.__index = self;
-
-    o.buttonBorderColor = { r = 0.7, g = 0.7, b = 0.7, a = 0.5 };
-    o.variableColor = { r = 0.9, g = 0.55, b = 0.1, a = 1 };
-    o.zOffsetSmallFont = 25;
-
-    return o;
-end
-
 function ItemSearchPanel:search()
     local ipairs = ipairs;
     local pairs = pairs;
 
+    local itemsByDisplay = ITEMSEARCH_PERSISTENT_DATA.itemsByDisplayName;
     local nameSet = ITEMSEARCH_PERSISTENT_DATA.displayNameSet;
-
-    local searchText = self.itemEntry:getInternalText();
-    print("Entered search value is: " .. searchText);
-    
-    local exactMatch = setContains(nameSet, searchText);
-    local displayName = nil;
-
-    if exactMatch then
-        local matches = ITEMSEARCH_PERSISTENT_DATA.itemsByDisplayName[searchText];
-        print("Exact match from persistent data on display name: ", ITEMSEARCH_PERSISTENT_DATA.itemsByDisplayName[searchText]);
-        for i, match in ipairs(matches) do
-            print(match:getDisplayName() .. ": " .. tostring(match:getType()) .. " - " .. match:getModuleName() .. "." .. match:getName());
-            -- TODO: If we truly have multiple items, this will always take the last match found, making this non-deterministic
-            displayName = match:getDisplayName();
-        end
-    end
-
-    if displayName == nil then
-        local searchPattern = self:createSearchPattern(searchText);
-        print("Generated search pattern is: " .. searchPattern);
-        displayName = findBestMatch(string.len(searchText), searchPattern);
-
-        if displayName ~= nil then
-            print("Best match found via pattern was: " .. displayName);
-        else
-            print("No match found via pattern");
-        end
-    end
-
-    if displayName == nil then
-        print("No match found, out of options :(");
-        return;
-    else
-        print("The match we found was: " .. displayName);
-    end
-
-    local player = getPlayer();
-    local playerNum = player:getPlayerNum();
-    local foundItem = false;
-    local inventory = getPlayerInventory(playerNum);
-
-    local containerList = {};
 
     local findItem = function(container, displayNameSearch)
         local containerType = container:getType();
@@ -232,97 +222,234 @@ function ItemSearchPanel:search()
     end
 
     local formatMessage = function(count, displayName, inventoryType)
-        local messageParts = {};
-        local suffixParts = {" in "};
+        local getPrefix = function(inventoryType, displayName, count)
+            local isPlural = count > 1;
+            local prefixParts = {};
 
-        if inventoryType == "inventory" then
-            table.insert(messageParts, "I have ");
-            table.insert(suffixParts, "my inventory");
-        else
-            if count == 1 then
-                table.insert(messageParts, "There is ");
-            else
-                table.insert(messageParts, "There are ");
+            local isPlayerHeld = function(inventoryType)
+                return inventoryType == "backpack" or inventoryType == "inventory";
             end
-            table.insert(suffixParts, "the ");
+
+            if isPlayerHeld(inventoryType) then
+                table.insert(prefixParts, "I have");
+            else
+                if isPlural then
+                    table.insert(prefixParts, "There are");
+                else
+                    table.insert(prefixParts, "There is");
+                end
+            end
+
+            if isPlural then
+                table.insert(prefixParts, count);
+            else
+                table.insert(prefixParts, "a");
+            end
+
+            return table.concat(prefixParts, " ");
+        end
+
+        local getName = function(displayName, isPlural)
+            if isPlural then
+                return pluralize(displayName);
+            else
+                return displayName;
+            end
+        end
+
+        local getSuffix = function(inventoryType)
+            local suffixParts = {};
+
+            if inventoryType == "floor" then
+                table.insert(suffixParts, "on");
+            else
+                table.insert(suffixParts, "in");
+            end
+
+            if inventoryType == "backpack" or inventoryType == "inventory" then
+                table.insert(suffixParts, "my");
+            else
+                table.insert(suffixParts, "the");
+            end
+
             table.insert(suffixParts, inventoryType);
+
+            return table.concat(suffixParts, " ");
         end
 
-        if count == 1 then
-            table.insert(messageParts, "a");
-        else
-            table.insert(messageParts, count);
-        end
-        
-        table.insert(messageParts, " ");
-        table.insert(messageParts, displayName);
-
-        if count > 1 and not endsWith(displayName, "s") then
-            table.insert(messageParts, "s");
-        end
-
-        table.insert(messageParts, table.concat(suffixParts, ""));
-
-        return table.concat(messageParts, "");
+        local messageParts = { getPrefix(inventoryType, displayName, count), getName(displayName, count > 1), getSuffix(inventoryType) };
+        return table.concat(messageParts, " ");
     end
 
-    local sayResult = function(playerNum, displayNameSearch, count, inventoryType)
+    local getExactMatch = function(searchText, itemsByDisplay)
+        local pascalize = function(input)
+            local results = {};
+            local parts = splitString(input);
+
+            for _, word in ipairs(parts) do
+                table.insert(results, table.concat({ word:sub(1, 1):upper(), word:sub(2) }));
+            end
+
+            return table.concat(results, " ");
+        end
+        local displayName = nil;
+
+        local searchText = pascalize(searchText);
+
+        if setContains(nameSet, searchText) then
+            local matches = itemsByDisplay[searchText];
+            print("Exact match from persistent data on display name, with " .. #matches .. " members");
+            -- All of these should have the same display name, so take the first
+            displayName = matches[1]:getDisplayName();
+            -- TODO: Present a seelction of choices to allow the player specific searching
+
+            local matchesByName = {};
+            for i, match in ipairs(matches) do
+                print("Match[" .. i .. "]" .. " - " .. match:getDisplayName() .. ": " .. tostring(match:getType()) .. " - " .. match:getModuleName() .. "." .. match:getName());
+                matchesByName[match:getName()] = match;
+            end
+        end
+
+        return displayName;
+    end
+
+    local getPatternMatch = function(searchText)
+        local displayName = nil;
+
+        local searchPattern = self:createSearchPattern(searchText);
+        print("Generated search pattern is: " .. searchPattern);
+        displayName = findBestMatch(string.len(searchText), searchPattern);
+
+        if displayName ~= nil then
+            print("Best match found via pattern was: " .. displayName);
+        else
+            print("No match found via pattern");
+        end
+
+        return displayName;
+    end
+
+    local pluralize = function(original)
+        if endsWith(original, "y") then
+            local parts = {};
+            table.insert(parts, original:sub(1, #original - 1));
+            table.insert(parts, "ies");
+
+            return table.concat(parts);
+        end
+
+        if not endsWith(original, "s") then
+            local parts = {};
+            table.insert(original);
+            table.insert("s");
+
+            return table.concat(parts);
+        else
+            return original;
+        end
+    end
+
+    local say = function(message)
+        self.character:Say(message);
+    end
+
+    local sayResult = function(displayNameSearch, count, inventoryType)
         local message = formatMessage(count, displayNameSearch, inventoryType);
 
-        getSpecificPlayer(playerNum):Say(message);
+        say(message);
     end
 
-    for i,v in ipairs(inventory.inventoryPane.inventoryPage.backpacks) do
-        local localInventory = v.inventory;
-        local containerType = localInventory:getType();
-        if containerType == "none" then
-            containerType = "inventory"
-        end
+    local searchText = self.itemEntry:getInternalText();
+    print("Entered search value is: " .. searchText);
 
-        local count = findItem(localInventory, displayName);
+    local searchInventory = self.searchInventoryTick.selected[1];
+    local searchRoom = self.searchRoomTick.selected[1];
+    local searchBuilding = self.searchBuildingTick.selected[1];
 
-        if count ~= nil then
-            foundItem = true;
-            sayResult(playerNum, displayName, count, containerType);
-            break;
-        end
+    -- Performance optimization:
+    -- Attempt to Pascal-case words to more often get an exact match, which is much faster than searching patterns
+    local displayName = getExactMatch(searchText, itemsByDisplay);
 
-        -- TODO only conditionally do this
-        print("inserting container from player backpack, container type: " .. containerType);
-        table.insert(containerList, localInventory);
+    if displayName == nil then
+        displayName = getPatternMatch(searchText);
     end
 
-    if foundItem then
-        return;
-    end
+    local playerNum = self.playerNum;
+    local foundItem = false;
 
-    local loot = getPlayerLoot(playerNum);
+    local containerList = {};
 
-    for i,v in ipairs(loot.inventoryPane.inventoryPage.backpacks) do
-        local localInventory = v.inventory;
-        local containerType = localInventory:getType();
-        print("Searching loot container type: " .. containerType);
+    if searchInventory then
+        say("Let me check my inventory...");
+        -- TODO: Figure out some sort of shuffling through container animation, trigger it, and submit this as a short search action
+        -- ISInventoryTransferAction:startActionAnim(), for source container character inventory, queues action anim "TransferItemOnSelf"
+        local inventory = getPlayerInventory(playerNum);
+        for i,v in ipairs(inventory.inventoryPane.inventoryPage.backpacks) do
+            local localInventory = v.inventory;
+            local containerType = localInventory:getType();
 
-        local count = findItem(localInventory, displayName);
-
-        if count ~= nil then
-            foundItem = true;
-            sayResult(playerNum, displayName, count, containerType);
+            if containerType == "none" then
+                containerType = "inventory";
+            elseif startsWith(containerType, "Bag") then
+                containerType = "backpack";
+            end
+    
+            local count = findItem(localInventory, displayName);
+    
+            if count ~= nil then
+                foundItem = true;
+                sayResult(displayName, count, containerType);
+                break;
+            end
+    
+            -- TODO only conditionally do this
+            print("inserting container from player backpack, container type: " .. containerType);
             table.insert(containerList, localInventory);
-        end;
+        end
+    
+        if foundItem then
+            return;
+        end
+    end
+
+    if searchRoom then
+        say("Hm, let's see what's around...");
+        -- TODO: Get an ordered list of searchable cells, then forward to a search action
+        local loot = getPlayerLoot(playerNum);
+    
+        for i,v in ipairs(loot.inventoryPane.inventoryPage.backpacks) do
+            local localInventory = v.inventory;
+            local containerType = localInventory:getType();
+            print("Searching loot container type: " .. containerType);
+    
+            local count = findItem(localInventory, displayName);
+    
+            if count ~= nil then
+                foundItem = true;
+                sayResult(displayName, count, containerType);
+                table.insert(containerList, localInventory);
+                break;
+            end;
+        end
+
+        if foundItem then
+            return;
+        end
+    end
+
+    if searchBuilding then
+
     end
 
     -- TODO Attempt to find the item in other cells with containers (or even on the floor)
     local room = player:getSquare():getRoom();
+    local building = room:getBuilding();
+    print("Inside building id: " .. building:getID());
 
     if room ~= nil then
         print("We're inside a room we can check for other containers");
-        local tileList = room:getTileList();
-        --print("Stuff available on vector: ");
-        --for key,value in pairs(tileList) do
-        --    print("Found member " .. key);
-        --end
-        -- print("Tile list (vector) size: " .. tileList:size());
+        print("Looking at room, name: " .. room:getName());
+        local roomContainers = {};
         local squares = room:getSquares();
         local squareCount = squares:size();
         print("Squares (arraylist) size: " .. squareCount);
@@ -338,13 +465,13 @@ function ItemSearchPanel:search()
             for it = 0, objs:size() - 1 do
                 local obj = objs:get(it);
                 local objContainer = obj:getContainer();
-                if (objContainer ~= nil) then
+                if objContainer ~= nil then
                     print("Found a container in the square, of type: " .. objContainer:getType());
 
                     local containerItems = objContainer:getItems();
                     local num = containerItems:size();
                     
-                    for listIt = 0, containerItems:size() - 1 do
+                    for listIt = 0, num - 1 do
                         local containerItem = containerItems:get(listIt);
                         print("Found an item in the container, display name: " .. containerItem:getDisplayName() .. ", type: " .. containerItem:getType());
                     end
@@ -373,26 +500,57 @@ function cacheItems()
 
         local name = item:getName();
 
-        local type = item:getType();
+        local itemType = item:getType();
 
         local displayName = item:getDisplayName();
 
-        if string.find(name, "PanFriedVegetables") ~= nil then
-            print("PANFRIEDVEGETABLES DISPLAY NAME: " .. displayName .. ", Module: " .. module .. ", type: " .. tostring(type) .. ", name: " .. name);
-        end;
+        -- if string.find(name, "PanFriedVegetables") ~= nil then
+        --     print("PANFRIEDVEGETABLES DISPLAY NAME: " .. displayName .. ", Module: " .. module .. ", type: " .. tostring(itemType) .. ", name: " .. name);
+        -- end;
 
-        if not setContains(ITEMSEARCH_PERSISTENT_DATA.displayNameSet) then
+        print("Display name: " .. displayName .. ", Module: " .. module .. ", Type: " .. tostring(itemType) .. ", Name: " .. name);
+
+        if not setContains(ITEMSEARCH_PERSISTENT_DATA.displayNameSet, displayName) then
             addTo(ITEMSEARCH_PERSISTENT_DATA.displayNameSet, displayName);
             ITEMSEARCH_PERSISTENT_DATA.itemsByDisplayName[displayName] = { item };
         else
-            table.insert(ITEMSEARCH_PERSISTENT_DATA.itemsByDisplayName[displayName], item);
-            print("We now have more than one item by the display name of " .. displayName);
-            for i, v in ipairs(ITEMSEARCH_PERSISTENT_DATA.itemsByDisplayName[displayName]) do
-                print(displayName .. "[" .. i .. "]" .. " Module: " .. v:getModuleName());
-            end
+            local matches = ITEMSEARCH_PERSISTENT_DATA.itemsByDisplayName[displayName];
+            table.insert(matches, item);
+
+            print("We have more than one item by the display name of " .. displayName);
+            local last = #matches - 1;
+            local lastMatch = matches[last];
+            local lastMatchModule = lastMatch:getModuleName();
+            local lastMatchType = tostring(lastMatch:getType());
+            local lastMatchName = lastMatch:getName();
+            print("Previous: " .. displayName .. "[" .. last .. "]" .. " Module: " .. lastMatchModule .. ", Type: " .. lastMatchType .. ", Name: " .. lastMatchName);
+            print("Current: " .. displayName .. "[" .. tostring(#matches) .. "]" .. " Module: " .. item:getModuleName() .. ", Type: " .. tostring(item:getType()) .. ", Name: " .. item:getName());
         end
     end
     print("Done with cacheItems startup function, should have cached display item info for " .. javaItemsSize .. " items provided by getAllItems()");
+end
+
+function ItemSearchPanel:new(player)
+    local o = {};
+    local x = getMouseX() + 10;
+    local y = getMouseY() + 10;
+
+    o = ISCollapsableWindow:new(x, y, 300, 300);
+    setmetatable(o, self);
+    self.__index = self;
+
+    o.player = player;
+    o.playerNum = player:getPlayerNum();
+    o.character = getSpecificPlayer(o.playerNum);
+    o.inventory = o.character:getInventory();
+    o.buttonBorderColor = { r = 0.7, g = 0.7, b = 0.7, a = 0.5 };
+    o.variableColor = { r = 0.9, g = 0.55, b = 0.1, a = 1 };
+    o.zOffsetSmallFont = 25;
+    -- Default follows ISPlayerDataObject
+
+    o.zoom = 1.34;
+
+    return o;
 end
 
 function onCustomUIKeyPressed(key)
@@ -405,7 +563,7 @@ function onCustomUIKeyPressed(key)
             uiOpen = false;
         else
             print("We openin' the UI my dude");
-            local uiInstance = ItemSearchPanel:new();
+            local uiInstance = ItemSearchPanel:new(getPlayer());
             uiInstance:initialise();
             uiInstance:addToUIManager();
             ui = uiInstance;
