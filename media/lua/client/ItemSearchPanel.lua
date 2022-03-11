@@ -149,7 +149,7 @@ function ItemSearchPanel:createChildren()
     self:addChild(self.searchBuildingTick);
 
     -- x, y, width, height, inventory, zoom
-    self.searchChoices = SearchChoiceTable:new(10, 140, 280, 120, self.playerNum);
+    self.searchChoices = SearchChoiceTable:new(10, 140, 800, 120, self.playerNum);
     self.searchChoices:initialise();
     self:addChild(self.searchChoices);
 end
@@ -534,8 +534,10 @@ function ItemSearchPanel:new(player)
     local o = {};
     local x = getMouseX() + 10;
     local y = getMouseY() + 10;
+    local width = 830;
+    local height = 500;
 
-    o = ISCollapsableWindow:new(x, y, 300, 300);
+    o = ISCollapsableWindow:new(x, y, width, height);
     setmetatable(o, self);
     self.__index = self;
 
