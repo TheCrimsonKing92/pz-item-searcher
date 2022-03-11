@@ -151,7 +151,7 @@ function ItemSearchPanel:createChildren()
     -- x, y, width, height, inventory, zoom
     self.searchChoices = SearchChoiceTable:new(10, 140, 280, 120, self.playerNum);
     self.searchChoices:initialise();
-    self:addView("All", self.searchChoices);
+    self:addChild(self.searchChoices);
 end
 
 function ItemSearchPanel:update()
