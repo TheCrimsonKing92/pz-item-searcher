@@ -193,6 +193,11 @@ function ItemSearchPanel:createSearchPattern(input)
     return table.concat(patternTable, "");
 end
 
+function ItemSearchPanel:populateChoices(items)
+    print("Got " .. #items .. " matches to pass to SearchChoiceTable");
+    self.searchChoices:initList(items);
+end
+
 function ItemSearchPanel:search()
     local ipairs = ipairs;
     local pairs = pairs;
@@ -301,13 +306,8 @@ function ItemSearchPanel:search()
             print("Exact match from persistent data on display name, with " .. #matches .. " members");
             -- All of these should have the same display name, so take the first
             displayName = matches[1]:getDisplayName();
-            -- TODO: Present a seelction of choices to allow the player specific searching
-
-            local matchesByName = {};
-            for i, match in ipairs(matches) do
-                print("Match[" .. i .. "]" .. " - " .. match:getDisplayName() .. ": " .. tostring(match:getType()) .. " - " .. match:getModuleName() .. "." .. match:getName());
-                matchesByName[match:getName()] = match;
-            end
+            -- TODO: Present a selection of choices to allow the player specific searching
+            self:populateChoices(matches);
         end
 
         return displayName;
@@ -548,9 +548,6 @@ function ItemSearchPanel:new(player)
     o.buttonBorderColor = { r = 0.7, g = 0.7, b = 0.7, a = 0.5 };
     o.variableColor = { r = 0.9, g = 0.55, b = 0.1, a = 1 };
     o.zOffsetSmallFont = 25;
-    -- Default follows ISPlayerDataObject
-
-    o.zoom = 1.34;
 
     return o;
 end

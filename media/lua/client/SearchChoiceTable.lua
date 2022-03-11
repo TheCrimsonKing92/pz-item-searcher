@@ -50,6 +50,8 @@ end
 
 function SearchChoiceTable:initList(items)
     print("Got " .. #items .. " items for the list");
+    self.itemChoices:clear();
+    print("Clear existing list content");
 end
 
 function SearchChoiceTable:render()
