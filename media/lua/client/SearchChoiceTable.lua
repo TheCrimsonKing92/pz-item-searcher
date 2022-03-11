@@ -48,6 +48,10 @@ function SearchChoiceTable:createChildren()
     self.chooseItem = ISButton:new(0, self.itemChoices.y + self.itemChoices.height + 5 + SMALL_FONT * 2 + 5, 100, buttonHeight, "Choose", self, SearchChoiceTable.chooseSelected);
 end
 
+function SearchChoiceTable:initList(items)
+    print("Got " .. #items .. " items for the list");
+end
+
 function SearchChoiceTable:render()
     ISPanel.render(self);
 
