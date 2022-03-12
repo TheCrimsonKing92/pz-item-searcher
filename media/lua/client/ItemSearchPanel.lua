@@ -148,21 +148,14 @@ function ItemSearchPanel:createChildren()
     self.searchBuildingTick:addOption("Search Building");
     self:addChild(self.searchBuildingTick);
 
-    -- x, y, width, height, inventory, zoom
-    self.searchChoices = SearchChoiceTable:new(10, 140, 800, 200, self.playerNum);
+    local chooseItem = function(item)
+        self:onItemChosen(item);
+    end
+    -- x, y, width, height, callback
+    self.searchChoices = SearchChoiceTable:new(10, 140, 800, 200, chooseItem);
     self.searchChoices:initialise();
+    self.searchChoices:setVisible(false);
     self:addChild(self.searchChoices);
-end
-
-function ItemSearchPanel:update()
-    ISCollapsableWindow.update(self);
-
-    -- update size of entire window if internal element size updates
-end
-
-function ItemSearchPanel:render()
-    -- Would not show up when put in createChildren. Perhaps overwritten/over-rendered by built-in ISCollapsableWindow functionality
-    self:drawText("Search for what item?", 10, 40, 1, 1, 1, 1, UIFont.Small);
 end
 
 function ItemSearchPanel:createSearchPattern(input)
@@ -193,9 +186,19 @@ function ItemSearchPanel:createSearchPattern(input)
     return table.concat(patternTable, "");
 end
 
+function ItemSearchPanel:onItemChosen(item)
+    print("An item was chosen via SearchChoiceTable: " .. tostring(item));
+end
+
 function ItemSearchPanel:populateChoices(items)
     print("Got " .. #items .. " matches to pass to SearchChoiceTable");
     self.searchChoices:initList(items);
+    self.searchChoices:setVisible(true);
+end
+
+function ItemSearchPanel:render()
+    -- Would not show up when put in createChildren. Perhaps overwritten/over-rendered by built-in ISCollapsableWindow functionality
+    self:drawText("Search for what item?", 10, 40, 1, 1, 1, 1, UIFont.Small);
 end
 
 function ItemSearchPanel:search()
@@ -482,6 +485,12 @@ function ItemSearchPanel:search()
 
     print(containerList);
     -- Queue search actions!
+end
+
+function ItemSearchPanel:update()
+    ISCollapsableWindow.update(self);
+
+    -- update size of entire window if internal element size updates
 end
 
 function cacheItems()

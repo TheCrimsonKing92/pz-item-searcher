@@ -19,14 +19,13 @@ local print = function(...)
 end
 
 function SearchChoiceTable:chooseItem(item)
-    -- Pass back/confirm to parent
-    print("Chose item : " .. tostring(item));
+    self.itemChosenCallback(item);
 end
 
 function SearchChoiceTable:chooseSelected(button, x, y)
-    -- Grab the one selected in itemChoices and pass back
     local selectedIndex = button.parent.itemChoices.selected;
-    print("Selected index: " .. selectedIndex);
+    local item = button.parent.itemChoices.items[selected].item;
+    self.itemChosenCallback(item);
 end
 
 function SearchChoiceTable:createChildren()
@@ -148,12 +147,7 @@ function SearchChoiceTable:render()
     ISPanel.render(self);
 end
 
---function SearchChoiceTable:update()
-    -- No idea why this is necessary, but ISItemsListTable does it
---    self.itemChoices.doDrawItem = self:drawItemChoice;
---end
-
-function SearchChoiceTable:new(x, y, width, height, playerNum)
+function SearchChoiceTable:new(x, y, width, height, itemChosenCallback)
     local o = ISPanel:new(x, y, width, height);
     setmetatable(o, self);
     self.__index = self;
@@ -161,6 +155,6 @@ function SearchChoiceTable:new(x, y, width, height, playerNum)
     o.borderColor = {r=0.4, g=0.4, b=0.4, a=0};
     o.backgroundColor = {r=0, g=0, b=0, a=1};
     o.buttonBorderColor = {r=0.7, g=0.7, b=0.7, a=0.5};
-
+    o.itemChosenCallback = itemChosenCallback;
     return o;
 end
