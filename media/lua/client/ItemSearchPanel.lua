@@ -190,6 +190,17 @@ function ItemSearchPanel:onItemChosen(item)
     print("An item was chosen via SearchChoiceTable: " .. tostring(item));
 end
 
+function ItemSearchPanel:pascalize(input)
+    local results = {};
+    local parts = splitString(input);
+
+    for _, word in ipairs(parts) do
+        table.insert(results, table.concat({ word:sub(1, 1):upper(), word:sub(2) }));
+    end
+
+    return table.concat(results, " ");
+end
+
 function ItemSearchPanel:populateChoices(items)
     print("Got " .. #items .. " matches to pass to SearchChoiceTable");
     self.searchChoices:initList(items);
@@ -290,19 +301,9 @@ function ItemSearchPanel:search()
     end
 
     local getExactMatch = function(searchText, itemsByDisplay)
-        local pascalize = function(input)
-            local results = {};
-            local parts = splitString(input);
-
-            for _, word in ipairs(parts) do
-                table.insert(results, table.concat({ word:sub(1, 1):upper(), word:sub(2) }));
-            end
-
-            return table.concat(results, " ");
-        end
         local displayName = nil;
 
-        local searchText = pascalize(searchText);
+        local searchText = self:pascalize(searchText);
 
         if setContains(nameSet, searchText) then
             local matches = itemsByDisplay[searchText];
