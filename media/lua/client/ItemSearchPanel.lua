@@ -186,6 +186,28 @@ function ItemSearchPanel:createSearchPattern(input)
     return table.concat(patternTable, "");
 end
 
+function ItemSearchPanel:getExactMatch(searchText, itemsByDisplay, nameSet)
+    local displayName = nil;
+
+    local searchText = self:pascalize(searchText);
+
+    if setContains(nameSet, searchText) then
+        local matches = itemsByDisplay[searchText];
+        print("Exact match from persistent data on display name, with " .. #matches .. " members");
+        -- All of these should have the same display name, so take the first
+        displayName = matches[1]:getDisplayName();
+        
+        if #matches > 1 then
+            self:populateChoices(matches);
+            -- When we search from a chosen item, we need to propagate both the display name and type so we can get the right match
+        else
+            -- We should maybe return the item here for instant searching?
+        end
+    end
+
+    return displayName;
+end
+
 function ItemSearchPanel:onItemChosen(item)
     print("An item was chosen via SearchChoiceTable: " .. tostring(item));
 end
@@ -300,28 +322,6 @@ function ItemSearchPanel:search()
         return table.concat(messageParts, " ");
     end
 
-    local getExactMatch = function(searchText, itemsByDisplay)
-        local displayName = nil;
-
-        local searchText = self:pascalize(searchText);
-
-        if setContains(nameSet, searchText) then
-            local matches = itemsByDisplay[searchText];
-            print("Exact match from persistent data on display name, with " .. #matches .. " members");
-            -- All of these should have the same display name, so take the first
-            displayName = matches[1]:getDisplayName();
-            
-            if #matches > 1 then
-                self:populateChoices(matches);
-                -- When we search from a chosen item, we need to propagate both the display name and type so we can get the right match
-            else
-                -- We should maybe return the item here for instant searching?
-            end
-        end
-
-        return displayName;
-    end
-
     local getPatternMatch = function(searchText)
         local displayName = nil;
 
@@ -385,7 +385,7 @@ function ItemSearchPanel:search()
     local searchRoom = self.searchRoomTick.selected[1];
     local searchBuilding = self.searchBuildingTick.selected[1];
 
-    local displayName = getExactMatch(searchText, itemsByDisplay);
+    local displayName = self:getExactMatch(searchText, itemsByDisplay, nameSet);
 
     if displayName == nil then
         displayName = getPatternMatch(searchText);
