@@ -309,8 +309,13 @@ function ItemSearchPanel:search()
             print("Exact match from persistent data on display name, with " .. #matches .. " members");
             -- All of these should have the same display name, so take the first
             displayName = matches[1]:getDisplayName();
-            -- TODO: Present a selection of choices to allow the player specific searching
-            self:populateChoices(matches);
+            
+            if #matches > 1 then
+                self:populateChoices(matches);
+                -- When we search from a chosen item, we need to propagate both the display name and type so we can get the right match
+            else
+                -- We should maybe return the item here for instant searching?
+            end
         end
 
         return displayName;
@@ -324,7 +329,14 @@ function ItemSearchPanel:search()
         displayName = findBestMatch(string.len(searchText), searchPattern);
 
         if displayName ~= nil then
-            print("Best match found via pattern was: " .. displayName);
+            local matches = itemsByDisplay[searchText];
+            print("Pattern match from persistent data on display name, with " .. #matches .. " members");
+
+            if #matches > 1 then
+                self:populateChoices(matches);
+            else
+                -- As above, maybe return the singular match
+            end
         else
             print("No match found via pattern");
         end
@@ -362,6 +374,9 @@ function ItemSearchPanel:search()
         say(message);
     end
 
+    self.searchChoices:setVisible(false);
+    self.searchChoices:clear();
+
     local searchText = self.itemEntry:getInternalText();
     print("Entered search value is: " .. searchText);
 
@@ -369,8 +384,6 @@ function ItemSearchPanel:search()
     local searchRoom = self.searchRoomTick.selected[1];
     local searchBuilding = self.searchBuildingTick.selected[1];
 
-    -- Performance optimization:
-    -- Attempt to Pascal-case words to more often get an exact match, which is much faster than searching patterns
     local displayName = getExactMatch(searchText, itemsByDisplay);
 
     if displayName == nil then

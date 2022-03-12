@@ -28,6 +28,10 @@ function SearchChoiceTable:chooseSelected(button, x, y)
     self.itemChosenCallback(item);
 end
 
+function SearchChoiceTable:clear()
+    self.itemChoices:clear();
+end
+
 function SearchChoiceTable:createChildren()
     ISPanel.createChildren(self);
 
@@ -131,9 +135,7 @@ function SearchChoiceTable:drawItemChoice(y, item, alt)
 end
 
 function SearchChoiceTable:initList(items)
-    print("Got " .. #items .. " items for the list");
     self.itemChoices:clear();
-    print("Clear existing list content");
 
     for x, v in ipairs(items) do
         -- There's a lot we could add here to mimic ISItemsListTable if we want to add categorization, filtering, etc.
