@@ -208,6 +208,29 @@ function ItemSearchPanel:getExactMatch(searchText, itemsByDisplay, nameSet)
     return displayName;
 end
 
+function ItemSearchPanel:getPatternMatch(searchText, itemsByDisplay)
+    local displayName = nil;
+
+    local searchPattern = self:createSearchPattern(searchText);
+    print("Generated search pattern is: " .. searchPattern);
+    displayName = findBestMatch(string.len(searchText), searchPattern);
+
+    if displayName ~= nil then
+        local matches = itemsByDisplay[displayName];
+        print("Pattern match from persistent data on display name, with " .. #matches .. " members");
+
+        if #matches > 1 then
+            self:populateChoices(matches);
+        else
+            -- As above, maybe return the singular match
+        end
+    else
+        print("No match found via pattern");
+    end
+
+    return displayName;
+end
+
 function ItemSearchPanel:onItemChosen(item)
     print("An item was chosen via SearchChoiceTable: " .. tostring(item));
 end
@@ -322,29 +345,6 @@ function ItemSearchPanel:search()
         return table.concat(messageParts, " ");
     end
 
-    local getPatternMatch = function(searchText)
-        local displayName = nil;
-
-        local searchPattern = self:createSearchPattern(searchText);
-        print("Generated search pattern is: " .. searchPattern);
-        displayName = findBestMatch(string.len(searchText), searchPattern);
-
-        if displayName ~= nil then
-            local matches = itemsByDisplay[searchText];
-            print("Pattern match from persistent data on display name, with " .. #matches .. " members");
-
-            if #matches > 1 then
-                self:populateChoices(matches);
-            else
-                -- As above, maybe return the singular match
-            end
-        else
-            print("No match found via pattern");
-        end
-
-        return displayName;
-    end
-
     local pluralize = function(original)
         if endsWith(original, "y") then
             local parts = {};
@@ -388,7 +388,7 @@ function ItemSearchPanel:search()
     local displayName = self:getExactMatch(searchText, itemsByDisplay, nameSet);
 
     if displayName == nil then
-        displayName = getPatternMatch(searchText);
+        displayName = self:getPatternMatch(searchText, itemsByDisplay);
     end
 
     local playerNum = self.playerNum;
