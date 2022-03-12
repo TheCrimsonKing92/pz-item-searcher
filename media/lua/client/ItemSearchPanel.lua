@@ -186,6 +186,28 @@ function ItemSearchPanel:createSearchPattern(input)
     return table.concat(patternTable, "");
 end
 
+-- TODO take in an optional type param
+function ItemSearchPanel:findItem(container, displayNameSearch)
+    local containerType = container:getType();
+    print("Searching locally in " .. containerType .. " container");
+    local items = container:getItems();
+
+    for i = 0, items:size() - 1 do
+        local item = items:get(i);
+
+        local displayName = item:getDisplayName();
+
+        if displayNameSearch == displayName then
+            local fullType = item:getFullType();
+            -- Ask the InventoryContainer for the count, not including items that can be drained, recursing through inventory container items
+            local count = container:getNumberOfItem(fullType, false, true);
+            return count;
+        end
+    end
+
+    return nil;
+end
+
 function ItemSearchPanel:formatMessage(count, displayName, inventoryType)
     local getPrefix = function(inventoryType, displayName, count)
         local isPlural = count > 1;
@@ -341,39 +363,18 @@ function ItemSearchPanel:say(message)
     self.character:Say(message);
 end
 
+function ItemSearchPanel:sayResult(displayNameSearch, count, inventoryType)
+    local message = self:formatMessage(count, displayNameSearch, inventoryType);
+
+    self:say(message);
+end
+
 function ItemSearchPanel:search()
     local ipairs = ipairs;
     local pairs = pairs;
 
     local itemsByDisplay = ITEMSEARCH_PERSISTENT_DATA.itemsByDisplayName;
     local nameSet = ITEMSEARCH_PERSISTENT_DATA.displayNameSet;
-
-    local findItem = function(container, displayNameSearch)
-        local containerType = container:getType();
-        print("Searching locally in " .. containerType .. " container");
-        local items = container:getItems();
-
-        for i = 0, items:size() - 1 do
-            local item = items:get(i);
-
-            local displayName = item:getDisplayName();
-
-            if displayNameSearch == displayName then
-                local fullType = item:getFullType();
-                -- Ask the InventoryContainer for the count, not including items that can be drained, recursing through inventory container items
-                local count = container:getNumberOfItem(fullType, false, true);
-                return count;
-            end
-        end
-
-        return nil;
-    end
-
-    local sayResult = function(displayNameSearch, count, inventoryType)
-        local message = self:formatMessage(count, displayNameSearch, inventoryType);
-
-        self:say(message);
-    end
 
     self.searchChoices:setVisible(false);
     self.searchChoices:clear();
@@ -411,11 +412,11 @@ function ItemSearchPanel:search()
                 containerType = "backpack";
             end
     
-            local count = findItem(localInventory, displayName);
+            local count = self:findItem(localInventory, displayName);
     
             if count ~= nil then
                 foundItem = true;
-                sayResult(displayName, count, containerType);
+                self:sayResult(displayName, count, containerType);
                 break;
             end
     
@@ -439,11 +440,11 @@ function ItemSearchPanel:search()
             local containerType = localInventory:getType();
             print("Searching loot container type: " .. containerType);
     
-            local count = findItem(localInventory, displayName);
+            local count = self:findItem(localInventory, displayName);
     
             if count ~= nil then
                 foundItem = true;
-                sayResult(displayName, count, containerType);
+                self:sayResult(displayName, count, containerType);
                 table.insert(containerList, localInventory);
                 break;
             end;
@@ -455,47 +456,46 @@ function ItemSearchPanel:search()
     end
 
     if searchBuilding then
-
-    end
-
-    -- TODO Attempt to find the item in other cells with containers (or even on the floor)
-    local room = self.player:getSquare():getRoom();
-    local building = room:getBuilding();
-    print("Inside building id: " .. building:getID());
-
-    if room ~= nil then
-        print("We're inside a room we can check for other containers");
-        print("Looking at room, name: " .. room:getName());
-        local roomContainers = {};
-        local squares = room:getSquares();
-        local squareCount = squares:size();
-        print("Squares (arraylist) size: " .. squareCount);
-        for i = 0, squareCount - 1 do
-            local square = squares:get(i);
-            local x = square:getX();
-            local y = square:getY();
-            -- *Should* be ignorable
-            local z = square:getZ();
-            print("Got square with x: " .. x .. ", y: " .. y .. ", z: " .. z);
-            local objs = square:getObjects();
-
-            for it = 0, objs:size() - 1 do
-                local obj = objs:get(it);
-                local objContainer = obj:getContainer();
-                if objContainer ~= nil then
-                    print("Found a container in the square, of type: " .. objContainer:getType());
-
-                    local containerItems = objContainer:getItems();
-                    local num = containerItems:size();
-                    
-                    for listIt = 0, num - 1 do
-                        local containerItem = containerItems:get(listIt);
-                        print("Found an item in the container, display name: " .. containerItem:getDisplayName() .. ", type: " .. containerItem:getType());
+        -- TODO Attempt to find the item in other cells with containers (or even on the floor)
+        local room = self.player:getSquare():getRoom();
+        local building = room:getBuilding();
+        print("Inside building id: " .. building:getID());
+    
+        if room ~= nil then
+            print("We're inside a room we can check for other containers");
+            print("Looking at room, name: " .. room:getName());
+            local roomContainers = {};
+            local squares = room:getSquares();
+            local squareCount = squares:size();
+            print("Squares (arraylist) size: " .. squareCount);
+            for i = 0, squareCount - 1 do
+                local square = squares:get(i);
+                local x = square:getX();
+                local y = square:getY();
+                -- *Should* be ignorable
+                local z = square:getZ();
+                print("Got square with x: " .. x .. ", y: " .. y .. ", z: " .. z);
+                local objs = square:getObjects();
+    
+                for it = 0, objs:size() - 1 do
+                    local obj = objs:get(it);
+                    local objContainer = obj:getContainer();
+                    if objContainer ~= nil then
+                        print("Found a container in the square, of type: " .. objContainer:getType());
+    
+                        local containerItems = objContainer:getItems();
+                        local num = containerItems:size();
+                        
+                        for listIt = 0, num - 1 do
+                            local containerItem = containerItems:get(listIt);
+                            print("Found an item in the container, display name: " .. containerItem:getDisplayName() .. ", type: " .. containerItem:getType());
+                        end
                     end
                 end
             end
         end
     end
+
 
     print(containerList);
     -- Queue search actions!
