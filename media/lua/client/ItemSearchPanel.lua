@@ -149,7 +149,7 @@ function ItemSearchPanel:createChildren()
     self:addChild(self.searchBuildingTick);
 
     -- x, y, width, height, inventory, zoom
-    self.searchChoices = SearchChoiceTable:new(10, 140, 800, 120, self.playerNum);
+    self.searchChoices = SearchChoiceTable:new(10, 140, 800, 200, self.playerNum);
     self.searchChoices:initialise();
     self:addChild(self.searchChoices);
 end
