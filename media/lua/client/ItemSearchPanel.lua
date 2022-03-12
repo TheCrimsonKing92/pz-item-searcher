@@ -216,7 +216,7 @@ function ItemSearchPanel:formatMessage(count, displayName, inventoryType)
 
     local getName = function(displayName, isPlural)
         if isPlural then
-            return pluralize(displayName);
+            return self:pluralize(displayName);
         else
             return displayName;
         end
@@ -306,6 +306,26 @@ function ItemSearchPanel:pascalize(input)
     return table.concat(results, " ");
 end
 
+function ItemSearchPanel:pluralize(original)
+    if endsWith(original, "y") then
+        local parts = {};
+        table.insert(parts, original:sub(1, #original - 1));
+        table.insert(parts, "ies");
+
+        return table.concat(parts);
+    end
+
+    if not endsWith(original, "s") then
+        local parts = {};
+        table.insert(original);
+        table.insert("s");
+
+        return table.concat(parts);
+    else
+        return original;
+    end
+end
+
 function ItemSearchPanel:populateChoices(items)
     print("Got " .. #items .. " matches to pass to SearchChoiceTable");
     self.searchChoices:initList(items);
@@ -315,6 +335,10 @@ end
 function ItemSearchPanel:render()
     -- Would not show up when put in createChildren. Perhaps overwritten/over-rendered by built-in ISCollapsableWindow functionality
     self:drawText("Search for what item?", 10, 40, 1, 1, 1, 1, UIFont.Small);
+end
+
+function ItemSearchPanel:say(message)
+    self.character:Say(message);
 end
 
 function ItemSearchPanel:search()
@@ -345,34 +369,10 @@ function ItemSearchPanel:search()
         return nil;
     end
 
-    local pluralize = function(original)
-        if endsWith(original, "y") then
-            local parts = {};
-            table.insert(parts, original:sub(1, #original - 1));
-            table.insert(parts, "ies");
-
-            return table.concat(parts);
-        end
-
-        if not endsWith(original, "s") then
-            local parts = {};
-            table.insert(original);
-            table.insert("s");
-
-            return table.concat(parts);
-        else
-            return original;
-        end
-    end
-
-    local say = function(message)
-        self.character:Say(message);
-    end
-
     local sayResult = function(displayNameSearch, count, inventoryType)
         local message = self:formatMessage(count, displayNameSearch, inventoryType);
 
-        say(message);
+        self:say(message);
     end
 
     self.searchChoices:setVisible(false);
@@ -397,7 +397,7 @@ function ItemSearchPanel:search()
     local containerList = {};
 
     if searchInventory then
-        say("Let me check my inventory...");
+        self:say("Let me check my inventory...");
         -- TODO: Figure out some sort of shuffling through container animation, trigger it, and submit this as a short search action
         -- ISInventoryTransferAction:startActionAnim(), for source container character inventory, queues action anim "TransferItemOnSelf"
         local inventory = getPlayerInventory(playerNum);
@@ -430,7 +430,7 @@ function ItemSearchPanel:search()
     end
 
     if searchRoom then
-        say("Hm, let's see what's around...");
+        self:say("Hm, let's see what's around...");
         -- TODO: Get an ordered list of searchable cells, then forward to a search action
         local loot = getPlayerLoot(playerNum);
     
