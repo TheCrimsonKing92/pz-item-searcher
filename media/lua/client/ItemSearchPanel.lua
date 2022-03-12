@@ -398,36 +398,7 @@ function ItemSearchPanel:search()
     local containerList = {};
 
     if searchInventory then
-        self:say("Let me check my inventory...");
-        -- TODO: Figure out some sort of shuffling through container animation, trigger it, and submit this as a short search action
-        -- ISInventoryTransferAction:startActionAnim(), for source container character inventory, queues action anim "TransferItemOnSelf"
-        local inventory = getPlayerInventory(playerNum);
-        for i,v in ipairs(inventory.inventoryPane.inventoryPage.backpacks) do
-            local localInventory = v.inventory;
-            local containerType = localInventory:getType();
-
-            if containerType == "none" then
-                containerType = "inventory";
-            elseif startsWith(containerType, "Bag") then
-                containerType = "backpack";
-            end
-    
-            local count = self:findItem(localInventory, displayName);
-    
-            if count ~= nil then
-                foundItem = true;
-                self:sayResult(displayName, count, containerType);
-                break;
-            end
-    
-            -- TODO only conditionally do this
-            print("inserting container from player backpack, container type: " .. containerType);
-            table.insert(containerList, localInventory);
-        end
-    
-        if foundItem then
-            return;
-        end
+        foundItem = self:searchInventory(displayName);
     end
 
     if searchRoom then
@@ -499,6 +470,32 @@ function ItemSearchPanel:search()
 
     print(containerList);
     -- Queue search actions!
+end
+
+function ItemSearchPanel:searchInventory(displayName)
+    self:say("Let me check my inventory...");
+    -- TODO: Figure out some sort of shuffling through container animation, trigger it, and submit this as a short search action
+    -- ISInventoryTransferAction:startActionAnim(), for source container character inventory, queues action anim "TransferItemOnSelf"
+    local inventory = getPlayerInventory(self.playerNum);
+    for i,v in ipairs(inventory.inventoryPane.inventoryPage.backpacks) do
+        local localInventory = v.inventory;
+        local containerType = localInventory:getType();
+
+        if containerType == "none" then
+            containerType = "inventory";
+        elseif startsWith(containerType, "Bag") then
+            containerType = "backpack";
+        end
+
+        local count = self:findItem(localInventory, displayName);
+
+        if count ~= nil then
+            self:sayResult(displayName, count, containerType);
+            return true;
+        end
+    end
+
+    return false;
 end
 
 function ItemSearchPanel:update()
