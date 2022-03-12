@@ -401,32 +401,11 @@ function ItemSearchPanel:search()
         foundItem = self:searchInventory(displayName);
     end
 
-    if searchRoom then
-        self:say("Hm, let's see what's around...");
-        -- TODO: Get an ordered list of searchable cells, then forward to a search action
-        local loot = getPlayerLoot(playerNum);
-    
-        for i,v in ipairs(loot.inventoryPane.inventoryPage.backpacks) do
-            local localInventory = v.inventory;
-            local containerType = localInventory:getType();
-            print("Searching loot container type: " .. containerType);
-    
-            local count = self:findItem(localInventory, displayName);
-    
-            if count ~= nil then
-                foundItem = true;
-                self:sayResult(displayName, count, containerType);
-                table.insert(containerList, localInventory);
-                break;
-            end;
-        end
-
-        if foundItem then
-            return;
-        end
+    if searchRoom and not foundItem then
+        foundItem = self:searchRoom(displayName);
     end
 
-    if searchBuilding then
+    if searchBuilding and not foundItem then
         -- TODO Attempt to find the item in other cells with containers (or even on the floor)
         local room = self.player:getSquare():getRoom();
         local building = room:getBuilding();
@@ -493,6 +472,27 @@ function ItemSearchPanel:searchInventory(displayName)
             self:sayResult(displayName, count, containerType);
             return true;
         end
+    end
+
+    return false;
+end
+
+function ItemSearchPanel:searchRoom(displayName)    
+    self:say("Hm, let's see what's around...");
+    -- TODO: Get an ordered list of searchable cells, then forward to a search action
+    local loot = getPlayerLoot(self.playerNum);
+
+    for i,v in ipairs(loot.inventoryPane.inventoryPage.backpacks) do
+        local localInventory = v.inventory;
+        local containerType = localInventory:getType();
+        print("Searching loot container type: " .. containerType);
+
+        local count = self:findItem(localInventory, displayName);
+
+        if count ~= nil then
+            self:sayResult(displayName, count, containerType);
+            return true;
+        end;
     end
 
     return false;
