@@ -186,6 +186,66 @@ function ItemSearchPanel:createSearchPattern(input)
     return table.concat(patternTable, "");
 end
 
+function ItemSearchPanel:formatMessage(count, displayName, inventoryType)
+    local getPrefix = function(inventoryType, displayName, count)
+        local isPlural = count > 1;
+        local prefixParts = {};
+
+        local isPlayerHeld = function(inventoryType)
+            return inventoryType == "backpack" or inventoryType == "inventory";
+        end
+
+        if isPlayerHeld(inventoryType) then
+            table.insert(prefixParts, "I have");
+        else
+            if isPlural then
+                table.insert(prefixParts, "There are");
+            else
+                table.insert(prefixParts, "There is");
+            end
+        end
+
+        if isPlural then
+            table.insert(prefixParts, count);
+        else
+            table.insert(prefixParts, "a");
+        end
+
+        return table.concat(prefixParts, " ");
+    end
+
+    local getName = function(displayName, isPlural)
+        if isPlural then
+            return pluralize(displayName);
+        else
+            return displayName;
+        end
+    end
+
+    local getSuffix = function(inventoryType)
+        local suffixParts = {};
+
+        if inventoryType == "floor" then
+            table.insert(suffixParts, "on");
+        else
+            table.insert(suffixParts, "in");
+        end
+
+        if inventoryType == "backpack" or inventoryType == "inventory" then
+            table.insert(suffixParts, "my");
+        else
+            table.insert(suffixParts, "the");
+        end
+
+        table.insert(suffixParts, inventoryType);
+
+        return table.concat(suffixParts, " ");
+    end
+
+    local messageParts = { getPrefix(inventoryType, displayName, count), getName(displayName, count > 1), getSuffix(inventoryType) };
+    return table.concat(messageParts, " ");
+end
+
 function ItemSearchPanel:getExactMatch(searchText, itemsByDisplay, nameSet)
     local displayName = nil;
 
@@ -285,66 +345,6 @@ function ItemSearchPanel:search()
         return nil;
     end
 
-    local formatMessage = function(count, displayName, inventoryType)
-        local getPrefix = function(inventoryType, displayName, count)
-            local isPlural = count > 1;
-            local prefixParts = {};
-
-            local isPlayerHeld = function(inventoryType)
-                return inventoryType == "backpack" or inventoryType == "inventory";
-            end
-
-            if isPlayerHeld(inventoryType) then
-                table.insert(prefixParts, "I have");
-            else
-                if isPlural then
-                    table.insert(prefixParts, "There are");
-                else
-                    table.insert(prefixParts, "There is");
-                end
-            end
-
-            if isPlural then
-                table.insert(prefixParts, count);
-            else
-                table.insert(prefixParts, "a");
-            end
-
-            return table.concat(prefixParts, " ");
-        end
-
-        local getName = function(displayName, isPlural)
-            if isPlural then
-                return pluralize(displayName);
-            else
-                return displayName;
-            end
-        end
-
-        local getSuffix = function(inventoryType)
-            local suffixParts = {};
-
-            if inventoryType == "floor" then
-                table.insert(suffixParts, "on");
-            else
-                table.insert(suffixParts, "in");
-            end
-
-            if inventoryType == "backpack" or inventoryType == "inventory" then
-                table.insert(suffixParts, "my");
-            else
-                table.insert(suffixParts, "the");
-            end
-
-            table.insert(suffixParts, inventoryType);
-
-            return table.concat(suffixParts, " ");
-        end
-
-        local messageParts = { getPrefix(inventoryType, displayName, count), getName(displayName, count > 1), getSuffix(inventoryType) };
-        return table.concat(messageParts, " ");
-    end
-
     local pluralize = function(original)
         if endsWith(original, "y") then
             local parts = {};
@@ -370,7 +370,7 @@ function ItemSearchPanel:search()
     end
 
     local sayResult = function(displayNameSearch, count, inventoryType)
-        local message = formatMessage(count, displayNameSearch, inventoryType);
+        local message = self:formatMessage(count, displayNameSearch, inventoryType);
 
         say(message);
     end
