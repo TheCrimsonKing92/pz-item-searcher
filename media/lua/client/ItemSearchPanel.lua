@@ -1,6 +1,8 @@
 require "ISUI/ISCollapsableWindow"
 require "ISUI/ISPanel"
-local SMALL_FONT = getTextManager():getFontHeight(UIFont.Small)
+
+local textManager = getTextManager();
+local SMALL_FONT = textManager:getFontHeight(UIFont.Small)
 
 local alphas = {"a", "A", "b", "B", "c", "C", "d", "D", "e", "E", "f", "F", "g", "G", "h", "H", "i", "I", "j", "J", "k", "K", "l", 'L', 'm', 'M', 'n', 'N', 'o', 'O', 'p', 'P', 'q', 'Q', 'r', 'R', 's', 'S', 't', 'T', 'u', 'U', 'v', 'V', 'w', 'W', 'x', 'X', 'y', 'Y', 'z', 'Z'};
 local patternMagics = {"-"};
@@ -115,7 +117,7 @@ function ItemSearchPanel:createChildren()
     local buttonWidth = 75;
     local padBottom = 10;
 
-    local textSize = getTextManager():MeasureStringX(UIFont.Small, "Search for what item?");
+    local textSize = textManager:MeasureStringX(UIFont.Small, "Search for what item?");
 
     local id = "Input";    
     -- 10 is our left-margin, 8 to separate the box from the label, the rest from the text itself
@@ -127,21 +129,32 @@ function ItemSearchPanel:createChildren()
     self:addChild(self.itemEntry);
 
     -- x, y, width, height, name, changeOptionTarget, changeOptionMethod, changeOptionArg1, changeOptionArg2
-    self.searchInventoryTick = ISTickBox:new(10, 60, 10, 10, "", nil, nil);
+    self.searchInventoryTick = ISTickBox:new(10, 65, 10, 10, "", nil, nil);
     self.searchInventoryTick:initialise();
     self.searchInventoryTick:instantiate();
     self.searchInventoryTick.selected[1] = true;
     self.searchInventoryTick:addOption("Search Inventory");
     self:addChild(self.searchInventoryTick);
 
-    self.searchRoomTick = ISTickBox:new(10, 85, 10, 10, "", nil, nil);
+    local searchInventoryWidth = textManager:MeasureStringX(UIFont.Small, "Search Inventory");
+
+    -- 10 is our leftPad, searchInventoryWidth is the text length of the leftward tick, 10 is the size of the leftward tick itself, then we need some additional padding
+    local secondTickX = 10 + searchInventoryWidth + 10 + 13;
+    self.searchNearbyTick = ISTickBox:new(secondTickX, 65, 10, 10, "", nil, nil);
+    self.searchNearbyTick:initialise();
+    self.searchNearbyTick:instantiate();
+    self.searchNearbyTick.selected[1] = true;
+    self.searchNearbyTick:addOption("Search Nearby");
+    self:addChild(self.searchNearbyTick);
+
+    self.searchRoomTick = ISTickBox:new(10, 90, 10, 10, "", nil, nil);
     self.searchRoomTick:initialise();
     self.searchRoomTick:instantiate();
     self.searchRoomTick.selected[1] = true;
     self.searchRoomTick:addOption("Search Room");
     self:addChild(self.searchRoomTick);
 
-    self.searchBuildingTick = ISTickBox:new(10, 110, 10, 10, "", nil, nil);
+    self.searchBuildingTick = ISTickBox:new(secondTickX, 90, 10, 10, "", nil, nil);
     self.searchBuildingTick:initialise();
     self.searchBuildingTick:instantiate();
     self.searchBuildingTick.selected[1] = true;
@@ -152,7 +165,7 @@ function ItemSearchPanel:createChildren()
         self:onItemChosen(item);
     end
     -- x, y, width, height, callback
-    self.searchChoices = SearchChoiceTable:new(10, 140, 800, 200, chooseItem);
+    self.searchChoices = SearchChoiceTable:new(10, 110, 800, 200, chooseItem);
     self.searchChoices:initialise();
     self.searchChoices:setVisible(false);
     self:addChild(self.searchChoices);
@@ -186,8 +199,7 @@ function ItemSearchPanel:createSearchPattern(input)
     return table.concat(patternTable, "");
 end
 
--- TODO take in an optional type param
-function ItemSearchPanel:findItem(container, displayNameSearch)
+function ItemSearchPanel:findItem(container, displayNameSearch, typeSearch)
     local containerType = container:getType();
     print("Searching locally in " .. containerType .. " container");
     local items = container:getItems();
@@ -196,8 +208,9 @@ function ItemSearchPanel:findItem(container, displayNameSearch)
         local item = items:get(i);
 
         local displayName = item:getDisplayName();
+        local type = item:getType();
 
-        if displayNameSearch == displayName then
+        if displayNameSearch == displayName and typeSearch == type then
             local fullType = item:getFullType();
             -- Ask the InventoryContainer for the count, not including items that can be drained, recursing through inventory container items
             local count = container:getNumberOfItem(fullType, false, true);
@@ -270,6 +283,7 @@ end
 
 function ItemSearchPanel:getExactMatch(searchText, itemsByDisplay, nameSet)
     local displayName = nil;
+    local type = nil;
 
     local searchText = self:pascalize(searchText);
 
@@ -278,20 +292,23 @@ function ItemSearchPanel:getExactMatch(searchText, itemsByDisplay, nameSet)
         print("Exact match from persistent data on display name, with " .. #matches .. " members");
         -- All of these should have the same display name, so take the first
         displayName = matches[1]:getDisplayName();
+        type = matches[1]:getType();
         
         if #matches > 1 then
             self:populateChoices(matches);
             -- When we search from a chosen item, we need to propagate both the display name and type so we can get the right match
         else
             -- We should maybe return the item here for instant searching?
+            return displayName, type;
         end
     end
 
-    return displayName;
+    return displayName, type;
 end
 
 function ItemSearchPanel:getPatternMatch(searchText, itemsByDisplay)
     local displayName = nil;
+    local type = nil;
 
     local searchPattern = self:createSearchPattern(searchText);
     print("Generated search pattern is: " .. searchPattern);
@@ -305,6 +322,7 @@ function ItemSearchPanel:getPatternMatch(searchText, itemsByDisplay)
             self:populateChoices(matches);
         else
             -- As above, maybe return the singular match
+            return displayName, type;
         end
     else
         print("No match found via pattern");
@@ -383,75 +401,40 @@ function ItemSearchPanel:search()
     print("Entered search value is: " .. searchText);
 
     local searchInventory = self.searchInventoryTick.selected[1];
+    local searchNearby = self.searchNearbyTick.selected[1];
     local searchRoom = self.searchRoomTick.selected[1];
     local searchBuilding = self.searchBuildingTick.selected[1];
 
-    local displayName = self:getExactMatch(searchText, itemsByDisplay, nameSet);
+    local displayName = nil;
+    local type = nil;
+
+    displayName, type = self:getExactMatch(searchText, itemsByDisplay, nameSet);
 
     if displayName == nil then
-        displayName = self:getPatternMatch(searchText, itemsByDisplay);
+        displayName, type = self:getPatternMatch(searchText, itemsByDisplay);
     end
 
-    local playerNum = self.playerNum;
     local foundItem = false;
-
-    local containerList = {};
-
+    
+    -- Queue search actions!
     if searchInventory then
-        foundItem = self:searchInventory(displayName);
+        foundItem = self:searchInventory(displayName, type);
+    end
+
+    if searchNearby then
+        foundItem = self:searchNearby(displayName, type);
     end
 
     if searchRoom and not foundItem then
-        foundItem = self:searchRoom(displayName);
+        foundItem = self:searchRoom(displayName, type);
     end
 
     if searchBuilding and not foundItem then
-        -- TODO Attempt to find the item in other cells with containers (or even on the floor)
-        local room = self.player:getSquare():getRoom();
-        local building = room:getBuilding();
-        print("Inside building id: " .. building:getID());
-    
-        if room ~= nil then
-            print("We're inside a room we can check for other containers");
-            print("Looking at room, name: " .. room:getName());
-            local roomContainers = {};
-            local squares = room:getSquares();
-            local squareCount = squares:size();
-            print("Squares (arraylist) size: " .. squareCount);
-            for i = 0, squareCount - 1 do
-                local square = squares:get(i);
-                local x = square:getX();
-                local y = square:getY();
-                -- *Should* be ignorable
-                local z = square:getZ();
-                print("Got square with x: " .. x .. ", y: " .. y .. ", z: " .. z);
-                local objs = square:getObjects();
-    
-                for it = 0, objs:size() - 1 do
-                    local obj = objs:get(it);
-                    local objContainer = obj:getContainer();
-                    if objContainer ~= nil then
-                        print("Found a container in the square, of type: " .. objContainer:getType());
-    
-                        local containerItems = objContainer:getItems();
-                        local num = containerItems:size();
-                        
-                        for listIt = 0, num - 1 do
-                            local containerItem = containerItems:get(listIt);
-                            print("Found an item in the container, display name: " .. containerItem:getDisplayName() .. ", type: " .. containerItem:getType());
-                        end
-                    end
-                end
-            end
-        end
+        -- foundItem = self:searchBuilding(displayName);
     end
-
-
-    print(containerList);
-    -- Queue search actions!
 end
 
-function ItemSearchPanel:searchInventory(displayName)
+function ItemSearchPanel:searchInventory(displayName, type)
     self:say("Let me check my inventory...");
     -- TODO: Figure out some sort of shuffling through container animation, trigger it, and submit this as a short search action
     -- ISInventoryTransferAction:startActionAnim(), for source container character inventory, queues action anim "TransferItemOnSelf"
@@ -466,7 +449,7 @@ function ItemSearchPanel:searchInventory(displayName)
             containerType = "backpack";
         end
 
-        local count = self:findItem(localInventory, displayName);
+        local count = self:findItem(localInventory, displayName, type);
 
         if count ~= nil then
             self:sayResult(displayName, count, containerType);
@@ -477,9 +460,9 @@ function ItemSearchPanel:searchInventory(displayName)
     return false;
 end
 
-function ItemSearchPanel:searchRoom(displayName)    
+function ItemSearchPanel:searchNearby(displayName, type)    
     self:say("Hm, let's see what's around...");
-    -- TODO: Get an ordered list of searchable cells, then forward to a search action
+    -- TODO: Get an ordered(?) list of searchable cells, then forward to a search action
     local loot = getPlayerLoot(self.playerNum);
 
     for i,v in ipairs(loot.inventoryPane.inventoryPage.backpacks) do
@@ -487,7 +470,7 @@ function ItemSearchPanel:searchRoom(displayName)
         local containerType = localInventory:getType();
         print("Searching loot container type: " .. containerType);
 
-        local count = self:findItem(localInventory, displayName);
+        local count = self:findItem(localInventory, displayName, type);
 
         if count ~= nil then
             self:sayResult(displayName, count, containerType);
@@ -496,6 +479,49 @@ function ItemSearchPanel:searchRoom(displayName)
     end
 
     return false;
+end
+
+function ItemSearchPanel:searchRoom(displayName, type)
+    -- TODO Attempt to find the item in other cells with containers (or even on the floor)
+    local containerList = {};
+        
+    local room = self.player:getSquare():getRoom();
+    local building = room:getBuilding();
+    print("Inside building id: " .. building:getID());
+
+    if room ~= nil then
+        print("We're inside a room we can check for other containers");
+        print("Looking at room, name: " .. room:getName());
+        local roomContainers = {};
+        local squares = room:getSquares();
+        local squareCount = squares:size();
+        print("Squares (arraylist) size: " .. squareCount);
+        for i = 0, squareCount - 1 do
+            local square = squares:get(i);
+            local x = square:getX();
+            local y = square:getY();
+            -- *Should* be ignorable
+            local z = square:getZ();
+            print("Got square with x: " .. x .. ", y: " .. y .. ", z: " .. z);
+            local objs = square:getObjects();
+
+            for it = 0, objs:size() - 1 do
+                local obj = objs:get(it);
+                local objContainer = obj:getContainer();
+                if objContainer ~= nil then
+                    print("Found a container in the square, of type: " .. objContainer:getType());
+
+                    local containerItems = objContainer:getItems();
+                    local num = containerItems:size();
+                    
+                    for listIt = 0, num - 1 do
+                        local containerItem = containerItems:get(listIt);
+                        print("Found an item in the container, display name: " .. containerItem:getDisplayName() .. ", type: " .. containerItem:getType());
+                    end
+                end
+            end
+        end
+    end
 end
 
 function ItemSearchPanel:update()
