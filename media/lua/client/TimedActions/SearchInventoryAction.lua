@@ -100,8 +100,6 @@ function SearchInventoryAction:sayResult(displayNameSearch, count, inventoryType
 end
 
 function SearchInventoryAction:searchInventory()
-    -- TODO: Figure out some sort of shuffling through container animation, trigger it, and submit this as a short search action
-    -- ISInventoryTransferAction:startActionAnim(), for source container character inventory, queues action anim "TransferItemOnSelf"
     local inventory = self.inventory;
     local searchTarget = self.searchTarget;
     local displayName = searchTarget.displayName;
@@ -153,10 +151,18 @@ function SearchInventoryAction:new(playerNum, character, searchTarget)
     o.forceProgressBar = true;
     o.inventory = getPlayerInventory(playerNum);
 
-    -- TODO count items in inventory and set a max time based on how much we're rummaging through
-    o.maxTime = 5;
+    local itemCount = 0;
 
-    if o.character:isTimedActionInstant() then
+    for i, v in ipairs(o.inventory.inventoryPane.inventoryPage.backpacks) do
+        local inventory = v.inventory;
+        itemCount  = itemCount + inventory:getItems():size();
+    end
+
+    if itemCount == 0 then
+        o.maxTime = 2;
+    elseif itemCount > 0 then
+        o.maxTime = itemCount * 2;
+    elseif o.character:isTimedActionInstant() then
         o.maxTime = 1;
     end
 
