@@ -423,8 +423,12 @@ function ItemSearchPanel:queueSearches()
     local searchRoom = self.searchRoomTick.selected[1];
     local searchBuilding = self.searchBuildingTick.selected[1];
 
-    -- Gonna have displayName and type, either the player entered an unambiguous name or we had them choose which they intend to get
+    -- Gonna have displayName, name, and fullType, either the player entered an unambiguous name or we had them choose which they intend to get
     local searchTarget = ITEMSEARCH_PERSISTENT_DATA.searchTarget;
+    -- function SearchInventoryAction:new(playerNum, character, inventory, searchTarget)
+    if searchInventory then
+        ISTimedActionQueue.add(SearchInventoryAction:new(self.playerNum, self.character, searchTarget));
+    end
 end
 
 function ItemSearchPanel:render()
@@ -578,21 +582,7 @@ function ItemSearchPanel:startSearch()
     local foundItem = false;
     
     -- Queue search actions!
-    if searchInventory then
-        foundItem = self:searchInventory(displayName, name, fullType);
-    end
-
-    if searchNearby and not foundItem then
-        foundItem = self:searchNearby(displayName, name, fullType);
-    end
-
-    if searchRoom and not foundItem then
-        foundItem = self:searchRoom(displayName, name, fullType);
-    end
-
-    if searchBuilding and not foundItem then
-        -- foundItem = self:searchBuilding(displayName);
-    end
+    self:queueSearches();
     
     ui:setVisible(false);
     ui:removeFromUIManager();
