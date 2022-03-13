@@ -170,7 +170,7 @@ function ItemSearchPanel:createChildren()
 
     -- x, y, width, height, callback
     local tableCallback = function(item)
-        self:onItemChosen(item);
+        self:setSearchTarget(item);
     end
 
     self.searchChoices = SearchChoiceTable:new(10, 110, 800, 200, tableCallback);
@@ -373,11 +373,6 @@ function ItemSearchPanel:getPatternMatches(searchText, itemsByDisplay)
     else
         return nil;
     end
-end
-
-function ItemSearchPanel:onItemChosen(item)
-    print("An item was chosen via SearchChoiceTable: " .. tostring(item));
-    self:setSearchTarget(item);
 end
 
 function ItemSearchPanel:pascalize(input)
