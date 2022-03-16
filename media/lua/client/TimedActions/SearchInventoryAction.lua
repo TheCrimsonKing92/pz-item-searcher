@@ -23,9 +23,6 @@ function SearchInventoryAction:findItem(inventory, displayNameSearch, nameSearch
         local name = item:getName();
         local fullType = item:getFullType();
 
-        print("Comparing item's display name: " .. displayName .. " to: " .. displayNameSearch .. " and name: " .. name .. " to: " .. nameSearch);
-        print("Item's full type: " .. fullType .. ", search full type: " .. fullTypeSearch);
-
         if displayNameSearch == displayName and (nameSearch == name or fullTypeSearch == fullType) then
             -- Ask the InventoryContainer for the count, not including items that can be drained, recursing through inventory container items
             local count = inventory:getNumberOfItem(fullType, false, true);
@@ -129,7 +126,6 @@ function SearchInventoryAction:searchInventory()
 end
 
 function SearchInventoryAction:start()
-    print("Starting search inventory action");
     self:say("Let me check my inventory...");
 
     if not SearchInventoryAction.searchSound or not self.character:getEmitter():isPlaying(SearchInventoryAction.searchSound) then
@@ -140,10 +136,6 @@ function SearchInventoryAction:start()
     end
 
     self:setActionAnim("TransferItemOnSelf");
-end
-
-function SearchInventoryAction:update()
-    print("Updating search inventory action");
 end
 
 function SearchInventoryAction:new(playerNum, character, searchTarget)
@@ -161,7 +153,7 @@ function SearchInventoryAction:new(playerNum, character, searchTarget)
     if itemCount == 0 then
         o.maxTime = 2;
     elseif itemCount > 0 then
-        o.maxTime = itemCount * 2;
+        o.maxTime = itemCount * 2 + 3;
     elseif o.character:isTimedActionInstant() then
         o.maxTime = 1;
     end
