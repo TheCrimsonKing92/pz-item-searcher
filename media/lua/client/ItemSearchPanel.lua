@@ -49,8 +49,6 @@ local function findBestMatch(originalLength, searchPattern)
     local thisEnd = nil;
 
     local isBetterMatch = function(newBegin, newEnd, newLength)
-        print("isBetterMatch called with newBegin: " .. newBegin .. ", newEnd: " .. newEnd .. ", newLength: " .. newLength);
-        print("potentialMatchBegin: " .. tostring(potentialMatchBegin) .. ", potentialMatchEnd: " .. tostring(potentialMatchEnd) .. ", potentialMatchLength: " .. tostring(potentialMatchLength));
         if result == nil then
             return true;
         end
