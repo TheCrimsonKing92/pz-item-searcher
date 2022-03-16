@@ -111,6 +111,7 @@ local function startsWith(str, starting)
 end
 
 function ItemSearchPanel:close()
+    ITEMSEARCH_PERSISTENT_DATA.searchTarget = nil;
     ui = null;
     uiOpen = false;
     self:removeFromUIManager();
@@ -182,7 +183,7 @@ function ItemSearchPanel:createChildren()
         self:startSearch();
     end
 
-    self.startSearchButton = ISButton:new(10, self.height - (buttonHeight + 2), 70, buttonHeight, "Start Searching", self, buttonCallback);
+    self.startSearchButton = ISButton:new(10, self.height - (buttonHeight + 10), 70, buttonHeight, "Start Searching", self, buttonCallback);
     self.startSearchButton.enable = false;
     self.startSearchButton:initialise();
     self.startSearchButton:instantiate();
@@ -222,10 +223,7 @@ function ItemSearchPanel:endMatch(matches)
         -- Populate into SearchChoiceTable so user can select the search target
         self:populateChoices(matches);
     else
-        -- Store this as the search target
-        local displayName = matches[1]:getDisplayName();
         -- Future feature: Allow the player to search for only the display name, allowing any variation to resolve the search
-        local name = matches[1]:getName();
         self:setSearchTarget(matches[1]);
     end
 end
@@ -422,7 +420,11 @@ function ItemSearchPanel:queueSearches()
     local searchTarget = ITEMSEARCH_PERSISTENT_DATA.searchTarget;
     -- function SearchInventoryAction:new(playerNum, character, inventory, searchTarget)
     if searchInventory then
-        ISTimedActionQueue.add(SearchInventoryAction:new(self.playerNum, self.character, searchTarget));
+        ISTimedActionQueue.add(SearchInventoryAction:new(self.playerNum, self.character, searchTarget, false));
+    end
+
+    if searchNearby then
+        ISTimedActionQueue.add(SearchInventoryAction:new(self.playerNum, self.character, searchTarget, true));
     end
 end
 
@@ -445,7 +447,7 @@ function ItemSearchPanel:render()
 
     local buttonHeight = self.startSearchButton.height;
     -- Height of the button below, a little padding, and enough height for the text
-    local heightOffset = buttonHeight + SMALL_FONT + 8;
+    local heightOffset = buttonHeight + SMALL_FONT + 12;
     self:drawText(searchingFor, 10, self.height - heightOffset, 1, 1, 1, 1, UIFont.Small)
 end
 
