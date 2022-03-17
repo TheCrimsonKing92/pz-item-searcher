@@ -633,10 +633,6 @@ function cacheItems()
     local javaItemsSize = allItems:size();
     for x = 0, javaItemsSize -1 do
         local item = allItems:get(x);
-
-        local module = item:getModuleName();
-        local name = item:getName();
-        local itemType = item:getType();
         local displayName = item:getDisplayName();
 
         if not setContains(ITEMSEARCH_PERSISTENT_DATA.displayNameSet, displayName) then
