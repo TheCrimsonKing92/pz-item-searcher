@@ -1,6 +1,10 @@
 require "ISUI/ISCollapsableWindow"
 require "ISUI/ISPanel"
 
+local stringUtil = require("PZISStringUtils");
+local endsWith = stringUtil.endsWith;
+local startsWith = stringUtil.startsWith;
+
 local textManager = getTextManager();
 local SMALL_FONT = textManager:getFontHeight(UIFont.Small)
 local buttonHeight = SMALL_FONT + 2 * 4;
@@ -33,10 +37,6 @@ ItemSearchPanel = ISCollapsableWindow:derive("ItemSearchPanel");
 
 local function addTo(set, key)
     set[key] = true;
-end
-
-local function endsWith(str, ending)
-    return ending == "" or str:sub(-#ending) == ending;
 end
 
 local function findBestMatch(originalLength, searchPattern)
@@ -102,10 +102,6 @@ local function splitString(input, separator)
     end
 
     return t;
-end
-
-local function startsWith(str, starting)
-    return starting == "" or string.sub(str, 1, #starting) == starting;
 end
 
 function ItemSearchPanel:close()
@@ -449,6 +445,10 @@ function ItemSearchPanel:queueSearches()
     if searchNearby then
         ISTimedActionQueue.add(SearchInventoryAction:new(self.playerNum, self.character, searchTarget, true));
     end
+
+    if searchRoom then
+        ISTimedActionQueue.add(SearchRoomAction:new(self.playerNum, self.character, searchTarget));
+    end;
 end
 
 function ItemSearchPanel:recreateStartSearch()

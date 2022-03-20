@@ -9,38 +9,28 @@ SearchInventoryAction.searchSoundTime = 0;
 
 SearchInventoryAction.similarTypes = { "SearchInventoryAction", "SearchRoomAction", "SearchBuildingAction" };
 
-local function endsWith(str, ending)
-    return ending == "" or str:sub(-#ending) == ending;
-end
+local stringUtil = require("PZISStringUtils");
 
-local function startsWith(str, starting)
-    return starting == "" or string.sub(str, 1, #starting) == starting;
-end
+local endsWith = stringUtil.endsWith;
+local startsWith = stringUtil.startsWith;
 
 function SearchInventoryAction:clearAdditionalSearches()
     -- Pretty much hocked logic from ISInventoryTransferAction:checkQueueList
     local actionQueue = ISTimedActionQueue.getTimedActionQueue(self.character);
-    print("Got character action queue with length: " .. tostring(#actionQueue.queue));
     local indexSelf = actionQueue:indexOf(self);
-    print("indexSelf: " .. tostring(indexSelf));
 
-    local index = 1;
+    -- local index = 1;
+    local index = #actionQueue.queue;
 
-    while index <= #actionQueue.queue do
-        print("Checking index " .. tostring(index) .. " of the action queue");
+    while index > 0 do
         if index ~= indexSelf then
             local action = actionQueue.queue[index];
             if self:isSimilarSearch(action) then
-                print("Removing similar search of type: " .. action.Type);
                 table.remove(actionQueue.queue, index);
                 table.wipe(action);
-            else
-                print("Not a similar search action, type: " .. action.Type);
             end
-        else
-            print("Self-index, not checking");
         end        
-        index = index + 1;
+        index = index - 1;
     end
 end
 
@@ -224,6 +214,26 @@ function SearchInventoryAction:searchInventory()
         elseif startsWith(containerType, "Bag") then
             containerType = "backpack";
         end
+
+        if self.isNearby then
+            local square = nil;
+            local parent = localInventory:getParent();
+            local source = localInventory:getSourceGrid();
+
+            if parent ~= nil then
+                square = parent:getSquare();
+            elseif source ~= nil then
+                square = source;
+            else
+                print("Could not find a square for the inventory!");
+            end
+
+            if square ~= nil then
+                local x = square:getX();
+                local y = square:getY();
+                self.character:faceLocation(x, y);
+            end            
+        end        
 
         local count = self:findItem(localInventory, displayName, name, fullType);
 
