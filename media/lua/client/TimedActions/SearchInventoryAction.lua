@@ -11,9 +11,6 @@ SearchInventoryAction.similarTypes = { "SearchInventoryAction", "SearchRoomActio
 
 local stringUtil = require("PZISStringUtils");
 
-local endsWith = stringUtil.endsWith;
-local startsWith = stringUtil.startsWith;
-
 function SearchInventoryAction:clearAdditionalSearches()
     -- Pretty much hocked logic from ISInventoryTransferAction:checkQueueList
     local actionQueue = ISTimedActionQueue.getTimedActionQueue(self.character);
@@ -156,7 +153,7 @@ function SearchInventoryAction:perform()
 end
 
 function SearchInventoryAction:pluralize(original)
-    if endsWith(original, "y") then
+    if stringUtil:endsWith(original, "y") then
         local parts = {};
         table.insert(parts, original:sub(1, #original - 1));
         table.insert(parts, "ies");
@@ -164,7 +161,7 @@ function SearchInventoryAction:pluralize(original)
         return table.concat(parts);
     end
 
-    if not endsWith(original, "s") then
+    if not stringUtil:endsWith(original, "s") then
         local parts = {};
         table.insert(parts, original);
         table.insert(parts, "s");
@@ -211,7 +208,7 @@ function SearchInventoryAction:searchInventory()
 
         if containerType == "none" then
             containerType = "inventory";
-        elseif startsWith(containerType, "Bag") then
+        elseif stringUtil:startsWith(containerType, "Bag") then
             containerType = "backpack";
         end
 

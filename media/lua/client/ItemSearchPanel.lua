@@ -1,9 +1,9 @@
 require "ISUI/ISCollapsableWindow"
 require "ISUI/ISPanel"
 
+local collectionUtil = require("PZISCollectionUtils");
+local setUtil = collectionUtil.set;
 local stringUtil = require("PZISStringUtils");
-local endsWith = stringUtil.endsWith;
-local startsWith = stringUtil.startsWith;
 
 local textManager = getTextManager();
 local SMALL_FONT = textManager:getFontHeight(UIFont.Small)
@@ -34,10 +34,6 @@ local ui = null;
 local uiOpen = false;
 
 ItemSearchPanel = ISCollapsableWindow:derive("ItemSearchPanel");
-
-local function addTo(set, key)
-    set[key] = true;
-end
 
 local function findBestMatch(originalLength, searchPattern)
     local nameSet = ITEMSEARCH_PERSISTENT_DATA.displayNameSet;
@@ -86,22 +82,6 @@ end
 
 local print = function(...)
     print("[ItemSearcher (ItemSearchPanel)] - ", ...);
-end
-
-local function setContains(set, key)
-    return set[key] ~= nil;
-end
-
-local function splitString(input, separator)
-    separator = separator or "%s";
-
-    local t = {};
-
-    for str in string.gmatch(input, "([^" .. separator .. "]+)") do
-        table.insert(t, str);
-    end
-
-    return t;
 end
 
 function ItemSearchPanel:close()
@@ -179,14 +159,14 @@ end
 
 function ItemSearchPanel:createSearchPattern(input)
     local patternTable = {};
-    local setContains = setContains;
+    local contains = setUtil.contains;
 
     local function isAlpha(char)
-        return setContains(ALPHA_SET, char);
+        return contains(ALPHA_SET, char);
     end
 
     local function isMagic(char)
-        return setContains(MAGIC_SET, char);
+        return contains(MAGIC_SET, char);
     end
 
     for i = 1, #input do
@@ -334,9 +314,10 @@ function ItemSearchPanel:formatMessage(count, displayName, inventoryType)
 end
 
 function ItemSearchPanel:getExactMatches(searchText, itemsByDisplay, nameSet)
-    local searchText = self:pascalize(searchText);
+    local contains = setUtil.contains;
+    local searchText = stringUtil:pascalize(searchText);
 
-    if setContains(nameSet, searchText) then
+    if contains(nameSet, searchText) then
         return itemsByDisplay[searchText];
     else
         return nil;
@@ -359,7 +340,6 @@ function ItemSearchPanel:getMatch()
     matches = self:getExactMatches(searchText, itemsByDisplay, nameSet);
 
     if matches ~= nil then
-        print("Exact match from persistent data on display name, with " .. #matches .. " members");
         self:endMatch(matches);
         return;
     end
@@ -367,7 +347,6 @@ function ItemSearchPanel:getMatch()
     matches = self:getPatternMatches(searchText, itemsByDisplay);
 
     if matches ~= nil then
-        print("Pattern match from persistent data on display name, with " .. #matches .. " members");
         self:endMatch(matches);
     else
         print("No match found");
@@ -387,19 +366,8 @@ function ItemSearchPanel:getPatternMatches(searchText, itemsByDisplay)
     end
 end
 
-function ItemSearchPanel:pascalize(input)
-    local results = {};
-    local parts = splitString(input);
-
-    for _, word in ipairs(parts) do
-        table.insert(results, table.concat({ word:sub(1, 1):upper(), word:sub(2) }));
-    end
-
-    return table.concat(results, " ");
-end
-
 function ItemSearchPanel:pluralize(original)
-    if endsWith(original, "y") then
+    if stringUtil:endsWith(original, "y") then
         local parts = {};
         table.insert(parts, original:sub(1, #original - 1));
         table.insert(parts, "ies");
@@ -407,7 +375,7 @@ function ItemSearchPanel:pluralize(original)
         return table.concat(parts);
     end
 
-    if not endsWith(original, "s") then
+    if not stringUtil:endsWith(original, "s") then
         local parts = {};
         table.insert(parts, original);
         table.insert(parts, "s");
@@ -523,7 +491,7 @@ function ItemSearchPanel:searchInventory(displayName, name, fullType)
 
         if containerType == "none" then
             containerType = "inventory";
-        elseif startsWith(containerType, "Bag") then
+        elseif stringUtil:startsWith(containerType, "Bag") then
             containerType = "backpack";
         end
 
@@ -624,6 +592,8 @@ end
 
 function cacheItems()
     print("Startup, getting cache of items available for searching");
+    local add = setUtil.add;
+    local contains = setUtil.contains;
     local allItems = getAllItems();
 
     ITEMSEARCH_PERSISTENT_DATA.itemCache = allItems;
@@ -635,8 +605,8 @@ function cacheItems()
         local item = allItems:get(x);
         local displayName = item:getDisplayName();
 
-        if not setContains(ITEMSEARCH_PERSISTENT_DATA.displayNameSet, displayName) then
-            addTo(ITEMSEARCH_PERSISTENT_DATA.displayNameSet, displayName);
+        if not contains(ITEMSEARCH_PERSISTENT_DATA.displayNameSet, displayName) then
+            add(ITEMSEARCH_PERSISTENT_DATA.displayNameSet, displayName);
             ITEMSEARCH_PERSISTENT_DATA.itemsByDisplayName[displayName] = { item };
         else
             local matches = ITEMSEARCH_PERSISTENT_DATA.itemsByDisplayName[displayName];
