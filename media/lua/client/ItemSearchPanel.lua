@@ -480,53 +480,6 @@ function ItemSearchPanel:sayResult(displayNameSearch, count, inventoryType)
     self:say(message);
 end
 
-function ItemSearchPanel:searchInventory(displayName, name, fullType)
-    self:say("Let me check my inventory...");
-    -- TODO: Figure out some sort of shuffling through container animation, trigger it, and submit this as a short search action
-    -- ISInventoryTransferAction:startActionAnim(), for source container character inventory, queues action anim "TransferItemOnSelf"
-    local inventory = getPlayerInventory(self.playerNum);
-    for i,v in ipairs(inventory.inventoryPane.inventoryPage.backpacks) do
-        local localInventory = v.inventory;
-        local containerType = localInventory:getType();
-
-        if containerType == "none" then
-            containerType = "inventory";
-        elseif stringUtil:startsWith(containerType, "Bag") then
-            containerType = "backpack";
-        end
-
-        local count = self:findItem(localInventory, displayName, name, fullType);
-
-        if count ~= nil then
-            self:sayResult(displayName, count, containerType);
-            return true;
-        end
-    end
-
-    return false;
-end
-
-function ItemSearchPanel:searchNearby(displayName, name, fullType)    
-    self:say("Hm, let's see what's around...");
-    -- TODO: Get an ordered(?) list of searchable cells, then forward to a search action
-    local loot = getPlayerLoot(self.playerNum);
-
-    for i,v in ipairs(loot.inventoryPane.inventoryPage.backpacks) do
-        local localInventory = v.inventory;
-        local containerType = localInventory:getType();
-        print("Searching loot container type: " .. containerType);
-
-        local count = self:findItem(localInventory, displayName, name, fullType);
-
-        if count ~= nil then
-            self:sayResult(displayName, count, containerType);
-            return true;
-        end;
-    end
-
-    return false;
-end
-
 function ItemSearchPanel:searchRoom(displayName, name, fullType)
     -- TODO Attempt to find the item in other cells with containers (or even on the floor)
     local containerList = {};
