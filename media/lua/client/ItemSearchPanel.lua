@@ -211,28 +211,6 @@ function ItemSearchPanel:endMatch(matches)
     end
 end
 
-function ItemSearchPanel:findItem(container, displayNameSearch, nameSearch, fullTypeSearch)
-    local containerType = container:getType();
-    print("Searching locally in " .. containerType .. " container");
-    local items = container:getItems();
-
-    for i = 0, items:size() - 1 do
-        local item = items:get(i);
-
-        local displayName = item:getDisplayName();
-        local name = item:getName();
-        local fullType = item:getFullType();
-
-        if displayNameSearch == displayName and (nameSearch == name or fullTypeSearch == fullType) then
-            -- Ask the InventoryContainer for the count, not including items that can be drained, recursing through inventory container items
-            local count = container:getNumberOfItem(fullType, false, true);
-            return count;
-        end
-    end
-
-    return nil;
-end
-
 function ItemSearchPanel:formatMessage(count, displayName, inventoryType)
     local getPrefix = function(inventoryType, displayName, count)
         local isPlural = count > 1;
