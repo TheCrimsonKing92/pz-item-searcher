@@ -1,14 +1,30 @@
 local collectionUtils = {};
 
-collectionUtils.set = {};
+local Set = {};
 
-collectionUtils.set.add = function(set, key)
-    set[key] = true;
+function Set:add(key)
+    self[key] = true;
 end
 
-collectionUtils.set.contains = function(set, key)
-    return set[key] ~= nil;
+function Set:contains(key)
+    return self[key] ~= nil;
 end
+
+function Set:new(list)
+    list = list or {};
+    
+    local set = {};
+    setmetatable(set, self);
+    self.__index = self;
+
+    for _, v in ipairs(list) do
+        set[v] = true;
+    end
+
+    return set;
+end
+
+collectionUtils.Set = Set;
 
 return collectionUtils;
 

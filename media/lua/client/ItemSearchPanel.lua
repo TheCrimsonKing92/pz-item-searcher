@@ -2,7 +2,7 @@ require "ISUI/ISCollapsableWindow"
 require "ISUI/ISPanel"
 
 local collectionUtil = require("PZISCollectionUtils");
-local setUtil = collectionUtil.set;
+local Set = collectionUtil.Set;
 local stringUtil = require("PZISStringUtils");
 
 local textManager = getTextManager();
@@ -11,23 +11,12 @@ local buttonHeight = SMALL_FONT + 2 * 4;
 
 local alphas = {"a", "A", "b", "B", "c", "C", "d", "D", "e", "E", "f", "F", "g", "G", "h", "H", "i", "I", "j", "J", "k", "K", "l", 'L', 'm', 'M', 'n', 'N', 'o', 'O', 'p', 'P', 'q', 'Q', 'r', 'R', 's', 'S', 't', 'T', 'u', 'U', 'v', 'V', 'w', 'W', 'x', 'X', 'y', 'Y', 'z', 'Z'};
 local patternMagics = {"-"};
-local ALPHA_SET = {};
-local MAGIC_SET = {};
-for _, v in ipairs(alphas) do
-    ALPHA_SET[v] = true;
-end
-
-for _, v in ipairs(patternMagics) do
-    MAGIC_SET[v] = true;
-end
+local ALPHA_SET = Set:new(alphas);
+local MAGIC_SET = Set:new(patternMagics);
 
 ITEMSEARCH_PERSISTENT_DATA = {};
-ITEMSEARCH_PERSISTENT_DATA.searchLocations = {
-    inventory = false,
-    nearby = false,
-    room = false,
-    building = false
-};
+ITEMSEARCH_PERSISTENT_DATA.displayNameSet = Set:new();
+ITEMSEARCH_PERSISTENT_DATA.itemsByDisplayName = {};
 ITEMSEARCH_PERSISTENT_DATA.searchTarget = nil;
 
 local ui = null;
@@ -159,23 +148,14 @@ end
 
 function ItemSearchPanel:createSearchPattern(input)
     local patternTable = {};
-    local contains = setUtil.contains;
-
-    local function isAlpha(char)
-        return contains(ALPHA_SET, char);
-    end
-
-    local function isMagic(char)
-        return contains(MAGIC_SET, char);
-    end
 
     for i = 1, #input do
         local char = input:sub(i, i);
 
-        if isAlpha(char) then
+        if ALPHA_SET:contains(char) then
             local charPattern = {"[", char:lower(), char:upper(), "]"};
             patternTable[#patternTable + 1] = table.concat(charPattern, "")
-        elseif isMagic(char) then
+        elseif MAGIC_SET:contains(char) then
             patternTable[#patternTable + 1] = "%" .. char;
         else
             patternTable[#patternTable + 1] = char;
@@ -314,10 +294,9 @@ function ItemSearchPanel:formatMessage(count, displayName, inventoryType)
 end
 
 function ItemSearchPanel:getExactMatches(searchText, itemsByDisplay, nameSet)
-    local contains = setUtil.contains;
     local searchText = stringUtil:pascalize(searchText);
 
-    if contains(nameSet, searchText) then
+    if nameSet:contains(searchText) then
         return itemsByDisplay[searchText];
     else
         return nil;
@@ -545,21 +524,18 @@ end
 
 function cacheItems()
     print("Startup, getting cache of items available for searching");
-    local add = setUtil.add;
-    local contains = setUtil.contains;
+    local displayNameSet = ITEMSEARCH_PERSISTENT_DATA.displayNameSet;
     local allItems = getAllItems();
 
     ITEMSEARCH_PERSISTENT_DATA.itemCache = allItems;
-    ITEMSEARCH_PERSISTENT_DATA.displayNameSet = {};
-    ITEMSEARCH_PERSISTENT_DATA.itemsByDisplayName = {};
 
     local javaItemsSize = allItems:size();
     for x = 0, javaItemsSize -1 do
         local item = allItems:get(x);
         local displayName = item:getDisplayName();
 
-        if not contains(ITEMSEARCH_PERSISTENT_DATA.displayNameSet, displayName) then
-            add(ITEMSEARCH_PERSISTENT_DATA.displayNameSet, displayName);
+        if not displayNameSet:contains(displayName) then
+            displayNameSet:add(displayName);
             ITEMSEARCH_PERSISTENT_DATA.itemsByDisplayName[displayName] = { item };
         else
             local matches = ITEMSEARCH_PERSISTENT_DATA.itemsByDisplayName[displayName];
