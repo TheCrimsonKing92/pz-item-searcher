@@ -211,66 +211,6 @@ function ItemSearchPanel:endMatch(matches)
     end
 end
 
-function ItemSearchPanel:formatMessage(count, displayName, inventoryType)
-    local getPrefix = function(inventoryType, displayName, count)
-        local isPlural = count > 1;
-        local prefixParts = {};
-
-        local isPlayerHeld = function(inventoryType)
-            return inventoryType == "backpack" or inventoryType == "inventory";
-        end
-
-        if isPlayerHeld(inventoryType) then
-            table.insert(prefixParts, "I have");
-        else
-            if isPlural then
-                table.insert(prefixParts, "There are");
-            else
-                table.insert(prefixParts, "There is");
-            end
-        end
-
-        if isPlural then
-            table.insert(prefixParts, count);
-        else
-            table.insert(prefixParts, "a");
-        end
-
-        return table.concat(prefixParts, " ");
-    end
-
-    local getName = function(displayName, isPlural)
-        if isPlural then
-            return self:pluralize(displayName);
-        else
-            return displayName;
-        end
-    end
-
-    local getSuffix = function(inventoryType)
-        local suffixParts = {};
-
-        if inventoryType == "floor" then
-            table.insert(suffixParts, "on");
-        else
-            table.insert(suffixParts, "in");
-        end
-
-        if inventoryType == "backpack" or inventoryType == "inventory" then
-            table.insert(suffixParts, "my");
-        else
-            table.insert(suffixParts, "the");
-        end
-
-        table.insert(suffixParts, inventoryType);
-
-        return table.concat(suffixParts, " ");
-    end
-
-    local messageParts = { getPrefix(inventoryType, displayName, count), getName(displayName, count > 1), getSuffix(inventoryType) };
-    return table.concat(messageParts, " ");
-end
-
 function ItemSearchPanel:getExactMatches(searchText, itemsByDisplay, nameSet)
     local searchText = stringUtil:pascalize(searchText);
 
@@ -425,16 +365,6 @@ function ItemSearchPanel:resetMatch()
     self:resetChoices();
     ITEMSEARCH_PERSISTENT_DATA.searchTarget = nil;
     self.startSearchButton.enable = false;
-end
-
-function ItemSearchPanel:say(message)
-    self.character:Say(message);
-end
-
-function ItemSearchPanel:sayResult(displayNameSearch, count, inventoryType)
-    local message = self:formatMessage(count, displayNameSearch, inventoryType);
-
-    self:say(message);
 end
 
 function ItemSearchPanel:searchRoom(displayName, name, fullType)
