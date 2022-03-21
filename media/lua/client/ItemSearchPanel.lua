@@ -367,49 +367,6 @@ function ItemSearchPanel:resetMatch()
     self.startSearchButton.enable = false;
 end
 
-function ItemSearchPanel:searchRoom(displayName, name, fullType)
-    -- TODO Attempt to find the item in other cells with containers (or even on the floor)
-    local containerList = {};
-        
-    local room = self.player:getSquare():getRoom();
-    local building = room:getBuilding();
-    print("Inside building id: " .. building:getID());
-
-    if room ~= nil then
-        print("We're inside a room we can check for other containers");
-        print("Looking at room, name: " .. room:getName());
-        local roomContainers = {};
-        local squares = room:getSquares();
-        local squareCount = squares:size();
-        print("Squares (arraylist) size: " .. squareCount);
-        for i = 0, squareCount - 1 do
-            local square = squares:get(i);
-            local x = square:getX();
-            local y = square:getY();
-            -- *Should* be ignorable
-            local z = square:getZ();
-            print("Got square with x: " .. x .. ", y: " .. y .. ", z: " .. z);
-            local objs = square:getObjects();
-
-            for it = 0, objs:size() - 1 do
-                local obj = objs:get(it);
-                local objContainer = obj:getContainer();
-                if objContainer ~= nil then
-                    print("Found a container in the square, of type: " .. objContainer:getType());
-
-                    local containerItems = objContainer:getItems();
-                    local num = containerItems:size();
-                    
-                    for listIt = 0, num - 1 do
-                        local containerItem = containerItems:get(listIt);
-                        print("Found an item in the container, display name: " .. containerItem:getDisplayName() .. ", type: " .. containerItem:getType());
-                    end
-                end
-            end
-        end
-    end
-end
-
 function ItemSearchPanel:setSearchTarget(item)    
     local displayName = item:getDisplayName();
     local name = item:getName();
