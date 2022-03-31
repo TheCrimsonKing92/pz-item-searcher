@@ -10,6 +10,12 @@ function Set:contains(key)
     return self[key] ~= nil;
 end
 
+function Set:merge(otherSet)
+    for k, _ in pairs(otherSet) do
+        self:add(k);
+    end
+end
+
 function Set:new(list)
     list = list or {};
     
