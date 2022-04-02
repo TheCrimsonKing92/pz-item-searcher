@@ -5,7 +5,6 @@ SearchInventoryAction = ISBaseTimedAction:derive("SearchInventoryAction");
 -- The PutItemInBag FMOD event duration is 10 seconds long, which stops it playing too frequently.
 SearchInventoryAction.searchSoundDelay = 9.5;
 SearchInventoryAction.searchSoundTime = 0;
--- keep only one instance of this action so we can queue item to transfer and avoid ton of instance when moving lot of items.
 
 SearchInventoryAction.similarTypes = { "SearchInventoryAction", "SearchRoomAction", "SearchBuildingAction" };
 

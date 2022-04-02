@@ -16,6 +16,16 @@ function Set:merge(otherSet)
     end
 end
 
+function Set:size()
+    local size = 0;
+
+    for _ in pairs(self) do
+        size = size + 1;
+    end
+
+    return size;
+end
+
 function Set:new(list)
     list = list or {};
     
