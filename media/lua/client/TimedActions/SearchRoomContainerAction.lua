@@ -94,6 +94,40 @@ SearchRoomContainerAction.sortContainersFromCharacterPoint = function(containerC
     return sortedContainers;
 end
 
+function SearchRoomContainerAction:findItem(container)
+    local searchTarget = self.searchTarget;
+    local displayNameSearch = searchTarget.displayName;
+    local nameSearch = searchTarget.name;
+    local fullTypeSearch = searchTarget.fullType;
+
+    local items = container:getItems();
+    local itemsCount = items:size();
+
+    if itemsCount > 0 then
+        for x = 0, itemsCount - 1 do
+            local item = items:get(x);
+
+            local displayName = item:getDisplayName();
+            local name = item:getName();
+            local fullType = item:getFullType();
+
+            if displayNameSearch == displayName then
+                print("Display name hit against search: " .. displayNameSearch);
+                print("Hit item's name: " .. name .. ", fullType: " .. fullType);
+                print("Search items name: " .. nameSearch .. ", fullType: " .. fullTypeSearch);
+            end
+
+            if displayNameSearch == displayName and (nameSearch == name or fullTypeSearch == fullType) then
+                -- Ask the InventoryContainer for the count, not including items that can be drained, recursing through inventory container items
+                return container:getNumberOfItem(fullType, false, true);
+            end
+        end
+    else
+        self:say("There's nothing in this " .. container:getType() .. "...");
+        return nil;
+    end
+end
+
 function SearchRoomContainerAction:getCharacterDistanceFrom(key)
     local parts = stringUtil:split(key, ':');
     local pointX = tonumber(parts[1]);
@@ -111,68 +145,23 @@ function SearchRoomContainerAction:isValid()
 end
 
 function SearchRoomContainerAction:perform()
-    -- displayName, name, fullType
-    local searchTarget = self.searchTarget;
-    local displayNameSearch = searchTarget.displayName;
-    local nameSearch = searchTarget.name;
-    local fullTypeSearch = searchTarget.fullType;
 
-    local consumedCells = self.consumedCells;
-    local containerCell = self.containerCell;
-    local containerCells = self.containerCells;
-    local containerMap = self.containerMap;
+    if not self.foundItem then
+        -- displayName, name, fullType
+        local consumedCells = self.consumedCells;
+        local containerCell = self.containerCell;
+        local containerCells = self.containerCells;
 
-    print("Looking for search target with display name: " .. displayNameSearch .. ", name: " .. nameSearch .. ", and full type: " .. fullTypeSearch .. ", at target: " .. containerCell);
+        print("Adding " .. containerCell .. " to consumed cells set");
+        consumedCells:add(containerCell);
 
-    local containers = containerMap[containerCell];
-
-    local itemsSearched = 0;
-    for _, container in ipairs(containers) do
-        self:say("Please be patient, searching in container type: " .. container:getType());
-
-        local items = container:getItems();
-        local itemsCount = items:size();
-
-        if itemsCount > 0 then
-            for x = 0, itemsCount - 1 do
-                local item = items:get(x);
-
-                local displayName = item:getDisplayName();
-                local name = item:getName();
-                local fullType = item:getFullType();
-
-                itemsSearched = itemsSearched + 1;
-
-                if self.maxTime > 3 then
-                    self:setCurrentTime(itemsSearched);
-                else
-                    -- TODO track job delta for edge cases of item count
-                end
-                
-
-                if displayNameSearch == displayName and (nameSearch == name or fullTypeSearch == fullType) then
-                    -- Ask the InventoryContainer for the count, not including items that can be drained, recursing through inventory container items
-                    local count = container:getNumberOfItem(fullType, false, true);
-                    self:say("I found it!");
-                    consumedCells:add(containerCell)
-                    self:forceComplete();
-                    ISBaseTimedAction.perform(self);
-                    return;
-                end
-            end
+        if consumedCells:size() < containerCells:size() then
+            self:queueNext();
+            print("Queued next room container search");
         else
-            self:say("There's nothing in this " .. container:getType());
+            print("No more cells with containers to search");
+            self:say("I guess I'll have to look elsewhere");
         end
-    end
-
-    consumedCells:add(containerCell);
-
-    if consumedCells:size() < containerCells:size() then
-        self:queueNext();
-        print("Queued next room container search");
-    else
-        print("No more cells with containers to search");
-        self:forceStop();
     end
     
     ISBaseTimedAction.perform(self);
@@ -186,6 +175,11 @@ function SearchRoomContainerAction:queueNext()
     end
 
     local next = table.remove(sorted, 1);
+    local containerMap = self.containerMap;
+
+    -- Grab a representative container for the walk
+    local squareContainers = containerMap[next];
+    local representative = squareContainers[1];
 
     local parts = stringUtil:split(next, ":");
     local targetX = tonumber(parts[1]);
@@ -194,8 +188,8 @@ function SearchRoomContainerAction:queueNext()
     local theZ = self.character:getCurrentSquare():getZ();
     local target = getSquare(targetX, targetY, theZ);
 
-    -- Queues the walk to the adjacent square, allow it to clear other actions
-    luautils.walkAdj(self.character, target);
+    -- Queues the walk to the containers, allow it to clear other actions
+    luautils.walkToContainer(representative, self.character:getPlayerNum());
     -- Queues the search
     ISTimedActionQueue.add(SearchRoomContainerAction:new(self.character, self.searchTarget, next, self.containerCells, self.containerMap, self.consumedCells));
 end
@@ -224,11 +218,55 @@ function SearchRoomContainerAction:start()
 end
 
 function SearchRoomContainerAction:update()
-    print("SearchRoomContainerAction:update");
+    if self.foundItem then
+        self:forceComplete();
+        return;
+    end
 
     if self.character:pressedMovement(false) or self.character:pressedCancelAction() then
         self:forceStop();
         return;
+    end
+
+    self.currentSearchTimer = self.currentSearchTimer + getGameTime():getMultiplier();
+
+    if self.currentContainer == nil then
+        print("Getting next container from queue with length: " .. #self.containerUpdateQueue);
+        self.currentContainer = table.remove(self.containerUpdateQueue, 1);
+        self.startOfContainerSearch = true;
+    end
+
+    local currentContainer = self.currentContainer;
+
+    if self.startOfContainerSearch then
+        local containerType = currentContainer.container:getType();
+        print("At start of container search, need to announce it. We're searching a " .. containerType .. " at cell " .. self.containerCell);
+
+        if currentContainer.itemCount > 0 then
+            self:say("Hm, let's see what's in this " .. containerType);
+        else
+            self:say("I don't think there's anything in this " .. containerType);
+        end
+        
+        self.startOfContainerSearch = false;
+    end
+
+    if self.currentSearchTimer >= self.currentContainer.time then
+        print("Over time for this container, need to simulate the end of the search");
+        if currentContainer.itemCount > 0 then
+            local findResult = self:findItem(currentContainer.container);
+
+            if findResult ~= nil then
+                self.foundItem = true;
+                -- TODO pluralize result message like the other searches
+                self:say("Aha, I found it!");
+                self:perform();
+                return;
+            else
+                self.currentContainer = nil;
+                self.currentSearchTimer = 0;
+            end
+        end
     end
 end
 
@@ -247,42 +285,59 @@ function SearchRoomContainerAction:new(character, searchTarget, containerCell, c
     o.consumedCells = consumedCells;
     -- x:y key
     o.containerCell = containerCell;
+    -- set of x:y keys
+    o.containerCells = containerCells;
+
     local parts = stringUtil:split(o.containerCell, ':');
     o.containerX = tonumber(parts[1]);
     o.containerY = tonumber(parts[2]);
     o.containerZ = currentSquare:getZ();
-    print("Getting actual square reference for container target");
+    -- Actual cell square
     o.containerSquare = getSquare(o.containerX, o.containerY, o.containerZ);
-    -- set of x:y keys
-    o.containerCells = containerCells;
+    
     -- map of x:y key to table of containers
     o.containerMap = containerMap;
     o.forceProgressBar = true;
-    -- displayName, name, fullName
+    
+    -- Info about the item we're looking for
     o.searchTarget = searchTarget;
+    -- Are we at the start of a container search simulation?
+    o.startOfContainerSearch = true;
+    -- Current container target
+    o.currentContainer = nil;
+    -- Timer for searching current container
+    o.currentSearchTimer = 0;
+    -- Whether we've found our target item
+    o.foundItem = false;
 
-    local itemCount = 0;
+    local secondsPerItem = 20;
+    local f = 1 / getGameTime():getMinutesPerDay() * 60;
 
+    local effectiveTime = 0;
     local containersToSearch = containerMap[containerCell];
+
+    local containerUpdateQueue = {};
 
     for i, container in ipairs(containersToSearch) do
         local containerItems = container:getItems();
         local itemsCount = containerItems:size();
 
-        if itemsCount > 0 then
-            itemCount = itemCount + itemsCount;
+        if itemsCount == 0 then
+            -- Build in some time to look at the "empty" container"
+            itemsCount = 1;
         end
+
+        local containerTime = itemsCount * secondsPerItem / f;
+        effectiveTime = effectiveTime + containerTime;
+        table.insert(containerUpdateQueue, { container = container, itemCount = itemsCount, time = containerTime });
     end
 
-    if itemCount == 0 then
-        print("No items found, setting a minimum value for max time");
-        o.maxTime = 3;
-    elseif itemCount > 0 then
-        o.maxTime = itemCount * 4 + 3;
-        print("Max time set to " .. o.maxTime .. " based on item count");
-    elseif o.character:isTimedActionInstant() then
-        print("Character has instant timed actions, maxTime == 1");
+    o.containerUpdateQueue = containerUpdateQueue;
+
+    if o.character:isTimedActionInstant() then
         o.maxTime = 1;
+    else
+        o.maxTime = effectiveTime;
     end
 
     return o;

@@ -263,6 +263,30 @@ function ItemSearchPanel:getPatternMatches(searchText, itemsByDisplay)
     end
 end
 
+function ItemSearchPanel:isAdjacent(square)
+    local current = self.character:getCurrentSquare();
+    local playerX = current:getX();
+    local playerY = current:getY();
+
+    local squareX = square:getX();
+    local squareY = square:getY();
+
+    local xDiff = playerX - squareX;
+    local yDiff = playerY - squareY;
+
+    if xDiff <= -2 or xDiff >= 2 or yDiff <= -2 or yDiff >= 2 then
+        return false;
+    end
+
+    if yDiff == 0 and (xDiff == -1 or xDiff == 1) then
+        return true;
+    elseif xDiff == 00 and (yDiff == -1 or yDiff == 1) then
+        return true;
+    else
+        return false;
+    end
+end
+
 function ItemSearchPanel:pluralize(original)
     if stringUtil:endsWith(original, "y") then
         local parts = {};
@@ -333,9 +357,12 @@ function ItemSearchPanel:queueSearches()
         local targetY = tonumber(parts[2]);
 
         local targetSquare = getSquare(targetX, targetY, theZ);
-        -- Queues the walk to the adjacent square, allow it to clear other actions
-        luautils.walkAdj(self.character, square, true);
-        print("Should have queued walk to adjacent square")
+        -- Grab a representative container from the square
+        local squareContainers = containerMap[first];
+        local representative = squareContainers[1];
+        -- Queues the walk to the container square, allow it to clear other actions
+        luautils.walkToContainer(representative, self.playerNum);
+        print("Should have queued walk to container")
         -- Queues the search
         ISTimedActionQueue.add(SearchRoomContainerAction:new(self.character, searchTarget, first, containerCells, containerMap, consumedCells));        
         print("Should have queued the actual search");
