@@ -30,7 +30,6 @@ SearchRoomContainerAction.getDistanceFromCharacterPoint = function(key, playerX,
 end
 
 SearchRoomContainerAction.findRoomContainers = function(room, playerX, playerY)
-    print("Scanning room def and caching container info");
     local squares = room:getSquares();
     local roomDef = room:getRoomDef();
 
@@ -67,16 +66,12 @@ SearchRoomContainerAction.findRoomContainers = function(room, playerX, playerY)
         end
     end
 
-    print("Found: " .. containerCount .. " containers in the room");
-    print("Number of container cells: " .. containerCells:size());
-
     local sortedContainers = SearchRoomContainerAction.sortContainersFromCharacterPoint(containerCells, consumedCells, playerX, playerY);
 
     return consumedCells, containerCells, containerMap, sortedContainers;
 end
 
 SearchRoomContainerAction.sortContainersFromCharacterPoint = function(containerCells, consumedCells, playerX, playerY)
-    print("Sorting containers from character point");
     local sortedContainers = {};
 
     for key, _ in pairs(containerCells) do
@@ -152,14 +147,11 @@ function SearchRoomContainerAction:perform()
         local containerCell = self.containerCell;
         local containerCells = self.containerCells;
 
-        print("Adding " .. containerCell .. " to consumed cells set");
         consumedCells:add(containerCell);
 
         if consumedCells:size() < containerCells:size() then
             self:queueNext();
-            print("Queued next room container search");
         else
-            print("No more cells with containers to search");
             self:say("I guess I'll have to look elsewhere");
         end
     end
@@ -231,7 +223,6 @@ function SearchRoomContainerAction:update()
     self.currentSearchTimer = self.currentSearchTimer + getGameTime():getMultiplier();
 
     if self.currentContainer == nil then
-        print("Getting next container from queue with length: " .. #self.containerUpdateQueue);
         self.currentContainer = table.remove(self.containerUpdateQueue, 1);
         self.startOfContainerSearch = true;
     end
@@ -240,8 +231,6 @@ function SearchRoomContainerAction:update()
 
     if self.startOfContainerSearch then
         local containerType = currentContainer.container:getType();
-        print("At start of container search, need to announce it. We're searching a " .. containerType .. " at cell " .. self.containerCell);
-
         if currentContainer.itemCount > 0 then
             self:say("Hm, let's see what's in this " .. containerType);
         else
@@ -252,7 +241,6 @@ function SearchRoomContainerAction:update()
     end
 
     if self.currentSearchTimer >= self.currentContainer.time then
-        print("Over time for this container, need to simulate the end of the search");
         if currentContainer.itemCount > 0 then
             local findResult = self:findItem(currentContainer.container);
 
@@ -271,7 +259,6 @@ function SearchRoomContainerAction:update()
 end
 
 function SearchRoomContainerAction:waitToStart()
-    print("Wait to start, face x: " .. self.containerX .. ", y: " .. self.containerY);
     self.character:faceLocation(self.containerX, self.containerY);
     return self.character:shouldBeTurning();
 end

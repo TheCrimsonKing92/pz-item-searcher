@@ -345,12 +345,10 @@ function ItemSearchPanel:queueSearches()
         
         local consumedCells, containerCells, containerMap, sortedContainers = SearchRoomContainerAction.findRoomContainers(room, playerX, playerY);
         if containerCells:size() == 0 then
-            print("No containers to search in this room");
             return;
         end
 
         local first = table.remove(sortedContainers, 1);
-        print("First container cell to search is : " .. first);
 
         local parts = stringUtil:split(first, ":");
         local targetX = tonumber(parts[1]);
@@ -362,10 +360,8 @@ function ItemSearchPanel:queueSearches()
         local representative = squareContainers[1];
         -- Queues the walk to the container square, allow it to clear other actions
         luautils.walkToContainer(representative, self.playerNum);
-        print("Should have queued walk to container")
         -- Queues the search
-        ISTimedActionQueue.add(SearchRoomContainerAction:new(self.character, searchTarget, first, containerCells, containerMap, consumedCells));        
-        print("Should have queued the actual search");
+        ISTimedActionQueue.add(SearchRoomContainerAction:new(self.character, searchTarget, first, containerCells, containerMap, consumedCells));
     end;
 end
 
