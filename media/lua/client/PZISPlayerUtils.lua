@@ -1,67 +1,114 @@
+local stringUtil = require("PZISStringUtils");
+
 local PZISPlayerUtils = {};
 
-PZISPlayerUtils.walkToContainer = function(container, playerNum)
-    if container:getType() == "floor" then
-        return true
+local spaceConcat = function(parts)
+    return table.concat(parts, " ");
+return
+
+PZISPlayerUtils.getFailureBody = function(displayName)
+    return displayName;
+end
+
+PZISPlayerUtils.getFailurePrefix = function()
+    return "I couldn't find a";
+end
+
+PZISPlayerUtils.getFailureMessage = function(inventoryType, displayName)
+    local messageParts = {};
+
+    table.insert(messageParts, PZISPlayerUtils.getFailurePrefix());
+    table.insert(messageParts, PZISPlayerUtils.getFailureBody(displayName));
+    table.insert(messageParts, PZISPlayerUtils.getFailureSuffix());
+
+    return spaceConcat(messageParts);
+end
+
+PZISPlayerUtils.getFailureSuffix = function(inventoryType)
+    if PZISPlayerUtils.isPlayerHeld(inventoryType) then
+        return "in my " .. inventoryType;
+    elseif inventoryType == "floor"
+        return "on the " .. inventoryType;
     end
+end
 
-    local playerObj = getSpecificPlayer(playerNum);
+PZISPlayerUtils.getSuccessBody = function(displayName, count)
+    local isPlural = count > 1;
 
-    if container:getParent() and container:getParent():getSquare():DistToProper(playerObj:getCurrentSquare()) < 2 then
-        return true;
+    if isPlural then
+        return stringUtil:pluralize(displayName);
+    else
+        return displayName;
     end
+end
 
-    if container:isInCharacterInventory(playerObj) then
-        return true
-    end
-    
-    local isoObject = container:getParent();
+PZISPlayerUtils.getSuccessMessage = function(inventoryType, displayName, count)
+    local messageParts = {};
 
-    if not isoObject or not isoObject:getSquare() then
-        return true
-    end
+    table.insert(messageParts, PZISPlayerUtils.getSuccessPrefix(inventoryType, count));
+    table.insert(messageParts, PZISPlayerUtils.getSuccessBody(displayName, count));
+    table.insert(messageParts, PZISPlayerUtils.getSuccessSuffix());
+end
 
-    if instanceof(isoObject, "BaseVehicle") then
-        if playerObj:getVehicle() == isoObject then
-            return true
+PZISPlayerUtils.getSuccessPrefix = function(inventoryType, count)
+    local isPlural = count > 1;
+    local prefixParts = {};
+
+    if PZISPlayerUtils.isPlayerHeld(inventoryType) then
+        table.insert(prefixParts, "I have");
+    else
+        if isPlural then
+            table.insert(prefixParts, "There are");
+        else
+            table.insert(prefixParts, "There is");
         end
-
-        if playerObj:getVehicle() then
-            error "luautils.walkToContainer()"
-        end
-
-        local part = container:getVehiclePart();
-
-        if part and part:getArea() then
-            if part:getVehicle():canAccessContainer(part:getIndex(), playerObj) then
-                return true;
-            end
-
-            if part:getDoor() and part:getInventoryItem() then
-                -- TODO: open the door if needed
-            end
-
-            ISTimedActionQueue.add(ISPathFindAction:pathToVehicleArea(playerObj, part:getVehicle(), part:getArea()))
-            return true
-        end
-
-        error "luautils.walkToContainer()";
     end
 
-    if instanceof(isoObject, "IsoDeadBody") then
-        return true
+    if isPlural then
+        table.insert(prefixParts, count);
+    else
+        table.insert(prefixParts, "a");
     end
 
-    local adjacent = AdjacentFreeTileFinder.Find(isoObject:getSquare(), playerObj);
+    return spaceConcat(prefixParts);
+end
 
-    if not adjacent then
-        return false;
+PZISPlayerUtils.getSuccessSuffix = function(inventoryType)
+    local suffixParts = {};
+
+    if inventoryType == "floor" then
+        table.insert(suffixParts, "on");
+    else
+        table.insert(suffixParts, "in");
     end
 
-    if adjacent == playerObj:getCurrentSquare() then
-        return true;
+    if inventoryType == "backpack" or inventoryType == "inventory" then
+        table.insert(suffixParts, "my");
+    else
+        table.insert(suffixParts, "the");
     end
 
-    ISTimedActionQueue.add(ISWalkToTimedAction:new(playerObj, adjacent));
-    return true;
+    table.insert(suffixParts, inventoryType);
+
+    return spaceConcat(suffixParts);
+end
+
+PZISPlayerUtils.isPlayerHeld = function(inventoryType)
+    return inventoryType ~= nil and inventoryType == "backpack" or inventoryType == "inventory";
+end
+
+PZISPlayerUtils.say = function(character, message)
+    character:Say(message);
+end
+
+PZISPlayerUtils.sayResult = function(character, inventoryType, displayName, count)
+    local message;
+
+    if count > 0 then
+        message = PZISPlayerUtils.getSuccessMessage(inventoryType, displayName, count);
+    else
+        message = PZISPlayerUtils.getFailureMessage(inventoryType, displayName);
+    end
+
+    PSISPlayerUtils.say(character, message);
 end

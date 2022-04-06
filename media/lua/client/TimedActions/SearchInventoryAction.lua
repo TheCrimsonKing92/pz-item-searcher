@@ -15,7 +15,6 @@ function SearchInventoryAction:clearAdditionalSearches()
     local actionQueue = ISTimedActionQueue.getTimedActionQueue(self.character);
     local indexSelf = actionQueue:indexOf(self);
 
-    -- local index = 1;
     local index = #actionQueue.queue;
 
     while index > 0 do
