@@ -1,0 +1,16 @@
+IGUI_EN = {
+    IGUI_IS_ItemSearchPanel_SearchFor = "Search for what item?",
+    IGUI_IS_ItemSearchPanel_SearchingFor = "Searching For: %1 (Name: %2)",
+    IGUI_IS_ItemSearchPanel_SearchingForNotSet = "Searching For: Search item not set! Enter an unambiguous display name, or double-click a table result.",
+    IGUI_IS_ItemSearchPanel_OptionInventory = "Search Inventory",
+    IGUI_IS_ItemSearchPanel_OptionNearby = "Search Nearby",
+    IGUI_IS_ItemSearchPanel_OptionRoom = "Search Room",
+    IGUI_IS_SearchResult_PlayerHeld_Prefix = "I have %1",
+    IGUI_IS_SearchResult_Inventory_Singular_Prefix = "There is %1",
+    IGUI_IS_SearchResult_Inventory_Plural_Prefix = "There are %1",
+    IGUI_IS_SearchResult_Floor_Suffix = "on the floor",
+    IGUI_IS_SearchResult_PlayerHeld_Suffix = "in my %1",
+    IGUI_IS_SearchFailure_PlayerHeld = "I couldn't find %1 % in my inventory";
+    IGUI_IS_SearchFailure_Nearby = "I couldn't find %1 %2 nearby";
+    IGUI_IS_SearchFailure_Room = "I couldn't find %1 %2 anywhere nearby";
+}
