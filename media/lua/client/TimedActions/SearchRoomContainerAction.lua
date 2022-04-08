@@ -304,7 +304,7 @@ function SearchRoomContainerAction:new(character, searchTarget, containerCell, c
     -- Whether we've found our target item
     o.foundItem = false;
 
-    local secondsPerItem = 40;
+    local secondsPerItem = 30;
     local f = 1 / getGameTime():getMinutesPerDay() * 60;
 
     local effectiveTime = 0;
