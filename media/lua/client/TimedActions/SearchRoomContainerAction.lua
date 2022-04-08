@@ -2,6 +2,7 @@ require "TimedActions/ISBaseTimedAction"
 
 local collectionUtil = require("PZISCollectionUtils");
 local Set = collectionUtil.Set;
+local playerUtil = require("PZISPlayerUtils");
 local stringUtil = require("PZISStringUtils");
 
 SearchRoomContainerAction = ISBaseTimedAction:derive("SearchRoomContainerAction");
@@ -89,6 +90,10 @@ SearchRoomContainerAction.sortContainersFromCharacterPoint = function(containerC
     return sortedContainers;
 end
 
+function SearchRoomContainerAction:clearAdditionalSearches()
+    ISTimedActionQueue.clear(self.character);
+end
+
 function SearchRoomContainerAction:findItem(container)
     local searchTarget = self.searchTarget;
     local displayNameSearch = searchTarget.displayName;
@@ -140,7 +145,6 @@ function SearchRoomContainerAction:isValid()
 end
 
 function SearchRoomContainerAction:perform()
-
     if not self.foundItem then
         -- displayName, name, fullType
         local consumedCells = self.consumedCells;
@@ -209,8 +213,19 @@ function SearchRoomContainerAction:start()
     self:setActionAnim("TransferItemOnSelf");
 end
 
+function SearchRoomContainerAction:startContainerSearch()
+    local currentContainer = self.currentContainer;
+
+    local containerType = currentContainer.container:getType();
+    local containerItemCount = currentContainer.itemCount;
+
+    playerUtil.sayStart(self.character, containerType, containerItemCount);        
+    self.startOfContainerSearch = false;
+end
+
 function SearchRoomContainerAction:update()
     if self.foundItem then
+        self:clearAdditionalSearches();
         self:forceComplete();
         return;
     end
@@ -230,31 +245,23 @@ function SearchRoomContainerAction:update()
     local currentContainer = self.currentContainer;
 
     if self.startOfContainerSearch then
-        local containerType = currentContainer.container:getType();
-        if currentContainer.itemCount > 0 then
-            self:say("Hm, let's see what's in this " .. containerType);
-        else
-            self:say("I don't think there's anything in this " .. containerType);
-        end
-        
-        self.startOfContainerSearch = false;
+        self:startContainerSearch();
     end
 
     if self.currentSearchTimer >= self.currentContainer.time then
         if currentContainer.itemCount > 0 then
             local findResult = self:findItem(currentContainer.container);
 
-            if findResult ~= nil then
+            if findResult ~= nil and findResult > 0 then
                 self.foundItem = true;
-                -- TODO pluralize result message like the other searches
-                self:say("Aha, I found it!");
-                self:perform();
-                return;
-            else
-                self.currentContainer = nil;
-                self.currentSearchTimer = 0;
             end
+
+            local containerType = currentContainer.container:getType();
+            playerUtil.sayResult(self.character, containerType, self.searchTarget.displayName, findResult);
         end
+        
+        self.currentContainer = nil;
+        self.currentSearchTimer = 0;
     end
 end
 
@@ -297,7 +304,7 @@ function SearchRoomContainerAction:new(character, searchTarget, containerCell, c
     -- Whether we've found our target item
     o.foundItem = false;
 
-    local secondsPerItem = 20;
+    local secondsPerItem = 40;
     local f = 1 / getGameTime():getMinutesPerDay() * 60;
 
     local effectiveTime = 0;
@@ -308,13 +315,12 @@ function SearchRoomContainerAction:new(character, searchTarget, containerCell, c
     for i, container in ipairs(containersToSearch) do
         local containerItems = container:getItems();
         local itemsCount = containerItems:size();
+        local containerTime = secondsPerItem / f;
 
-        if itemsCount == 0 then
-            -- Build in some time to look at the "empty" container"
-            itemsCount = 1;
+        if itemsCount > 0 then
+            containerTime = itemsCount * secondsPerItem / f;
         end
 
-        local containerTime = itemsCount * secondsPerItem / f;
         effectiveTime = effectiveTime + containerTime;
         table.insert(containerUpdateQueue, { container = container, itemCount = itemsCount, time = containerTime });
     end

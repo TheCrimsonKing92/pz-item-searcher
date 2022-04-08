@@ -15,6 +15,26 @@ function PZISStringUtils:pascalize(input)
     return table.concat(results, " ");
 end
 
+function PZISStringUtils:pluralize(input)
+    if self:endsWith(original, "y") then
+        local parts = {};
+        table.insert(parts, original:sub(1, #original - 1));
+        table.insert(parts, "ies");
+
+        return table.concat(parts);
+    end
+
+    if not self:endsWith(original, "s") then
+        local parts = {};
+        table.insert(parts, original);
+        table.insert(parts, "s");
+
+        return table.concat(parts);
+    else
+        return original;
+    end
+end
+
 function PZISStringUtils:split(input, separator)
     local t = {};
     separator = separator or '%s';
