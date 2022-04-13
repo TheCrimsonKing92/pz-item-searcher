@@ -343,6 +343,11 @@ function ItemSearchPanel:queueSearches()
         local theZ = square:getZ();
 
         local room = square:getRoom();
+
+        if room == nil then
+            self.character:Say("I'm not in a room to search!");
+            return;
+        end
         
         local consumedCells, containerCells, containerMap, sortedContainers = SearchRoomContainerAction.findRoomContainers(room, playerX, playerY);
         if containerCells:size() == 0 then
@@ -360,7 +365,7 @@ function ItemSearchPanel:queueSearches()
         -- Grab a representative container from the square
         local squareContainers = containerMap[first];
         local representative = squareContainers[1];
-        -- Queues the walk to the container square, allow it to clear other actions
+        -- Queues the walk to the container square
         playerUtil.walkToContainer(self.character, representative);
         -- Queues the search
         ISTimedActionQueue.add(SearchRoomContainerAction:new(self.character, searchTarget, first, containerCells, containerMap, consumedCells));
