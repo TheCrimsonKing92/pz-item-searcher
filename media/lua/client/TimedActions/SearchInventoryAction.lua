@@ -6,8 +6,16 @@ SearchInventoryAction = ISBaseTimedAction:derive("SearchInventoryAction");
 SearchInventoryAction.searchSoundDelay = 9.5;
 SearchInventoryAction.searchSoundTime = 0;
 
+local collectionUtil = require("PZISCollectionUtils");
+local Set = collectionUtil.Set;
 local playerUtil = require("PZISPlayerUtils");
 local stringUtil = require("PZISStringUtils");
+
+SearchInventoryAction.exclusionTypes = Set:new({ "KeyRing" });
+
+local print = function(...)
+    print("[ItemSearcher (SearchInventoryAction)] - ", ...);
+end
 
 function SearchInventoryAction:clearAdditionalSearches()
     ISTimedActionQueue.clear(self.character);
@@ -15,7 +23,7 @@ end
 
 function SearchInventoryAction:findItem(inventory, displayNameSearch, nameSearch, fullTypeSearch)
     local containerType = inventory:getType();
-    print("Searching locally in " .. containerType .. " type container");
+    print("Searching locally in '" .. containerType .. "' type container");
 
     local items = inventory:getItems();
     for i = 0, items:size() - 1 do
@@ -86,41 +94,45 @@ function SearchInventoryAction:searchInventory()
     local name = searchTarget.name;
     local fullType = searchTarget.fullType;
 
+    local exclusionTypes = SearchInventoryAction.exclusionTypes;
+
     for i,v in ipairs(inventory.inventoryPane.inventoryPage.backpacks) do
         local localInventory = v.inventory;
         local containerType = localInventory:getType();
 
-        if containerType == "none" then
-            containerType = "inventory";
-        elseif stringUtil:startsWith(containerType, "Bag") then
-            containerType = "backpack";
-        end
-
-        if self.isNearby then
-            local square = nil;
-            local parent = localInventory:getParent();
-            local source = localInventory:getSourceGrid();
-
-            if parent ~= nil then
-                square = parent:getSquare();
-            elseif source ~= nil then
-                square = source;
-            else
-                print("Could not find a square for the inventory!");
+        if not exclusionTypes:contains(containerType) then
+            if containerType == "none" then
+                containerType = "inventory";
+            elseif stringUtil:startsWith(containerType, "Bag") then
+                containerType = "backpack";
             end
-
-            if square ~= nil then
-                local x = square:getX();
-                local y = square:getY();
-                self.character:faceLocation(x, y);
-            end            
-        end        
-
-        local count = self:findItem(localInventory, displayName, name, fullType);
-        playerUtil.sayResult(self.character, containerType, displayName, count);
-
-        if count ~= nil then
-            return true;
+    
+            if self.isNearby then
+                local square = nil;
+                local parent = localInventory:getParent();
+                local source = localInventory:getSourceGrid();
+    
+                if parent ~= nil then
+                    square = parent:getSquare();
+                elseif source ~= nil then
+                    square = source;
+                else
+                    print("Could not find a square for the inventory!");
+                end
+    
+                if square ~= nil then
+                    local x = square:getX();
+                    local y = square:getY();
+                    self.character:faceLocation(x, y);
+                end            
+            end        
+    
+            local count = self:findItem(localInventory, displayName, name, fullType);
+            playerUtil.sayResult(self.character, containerType, displayName, count);
+    
+            if count ~= nil then
+                return true;
+            end
         end
     end
 
@@ -159,11 +171,14 @@ function SearchInventoryAction:new(playerNum, character, searchTarget, isNearby)
         o.inventory = getPlayerInventory(playerNum);
     end    
 
+    local exclusionTypes = SearchInventoryAction.exclusionTypes;
     local itemCount = 0;
 
     for i, v in ipairs(o.inventory.inventoryPane.inventoryPage.backpacks) do
         local inventory = v.inventory;
-        itemCount  = itemCount + inventory:getItems():size();
+        if not exclusionTypes:contains(inventory:getType()) then
+            itemCount  = itemCount + inventory:getItems():size();
+        end
     end
 
     if itemCount == 0 then
