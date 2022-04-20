@@ -3,6 +3,7 @@ require "ISUI/ISPanel"
 
 local collectionUtil = require("PZISCollectionUtils");
 local Set = collectionUtil.Set;
+local playerUtil = require("PZISPlayerUtils");
 local stringUtil = require("PZISStringUtils");
 
 local textManager = getTextManager();
@@ -342,9 +343,15 @@ function ItemSearchPanel:queueSearches()
         local theZ = square:getZ();
 
         local room = square:getRoom();
+
+        if room == nil then
+            self.character:Say("I'm not in a room to search!");
+            return;
+        end
         
         local consumedCells, containerCells, containerMap, sortedContainers = SearchRoomContainerAction.findRoomContainers(room, playerX, playerY);
         if containerCells:size() == 0 then
+            self.character:Say("There's nothing to search in here.");
             return;
         end
 
@@ -358,8 +365,8 @@ function ItemSearchPanel:queueSearches()
         -- Grab a representative container from the square
         local squareContainers = containerMap[first];
         local representative = squareContainers[1];
-        -- Queues the walk to the container square, allow it to clear other actions
-        luautils.walkToContainer(representative, self.playerNum);
+        -- Queues the walk to the container square
+        playerUtil.walkToContainer(self.character, representative);
         -- Queues the search
         ISTimedActionQueue.add(SearchRoomContainerAction:new(self.character, searchTarget, first, containerCells, containerMap, consumedCells));
     end;
