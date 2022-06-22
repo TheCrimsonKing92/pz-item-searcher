@@ -79,69 +79,57 @@ PZISPlayerUtils.getStartSuffix = function(containerType, isNearby)
     return spaceConcat(suffixParts);
 end
 
-PZISPlayerUtils.getSuccessBody = function(displayName, count)
-    local isPlural = count > 1;
-
-    if isPlural then
-        return stringUtil:pluralize(displayName);
-    else
-        return displayName;
-    end
-end
-
 PZISPlayerUtils.getSuccessMessage = function(inventoryType, displayName, count)
     local messageParts = {};
+    table.insert(messageParts, getText("IGUI_IS_Search_Success_Exclamation"));
 
-    table.insert(messageParts, PZISPlayerUtils.getSuccessPrefix(inventoryType, count));
-    table.insert(messageParts, PZISPlayerUtils.getSuccessBody(displayName, count));
-    table.insert(messageParts, PZISPlayerUtils.getSuccessSuffix(inventoryType, count));
-
-    return spaceConcat(messageParts);
-end
-
-PZISPlayerUtils.getSuccessPrefix = function(inventoryType, count)
+    local isPlayerHeld = PZISPlayerUtils.isPlayerHeld(inventoryType);
     local isPlural = count > 1;
-    local prefixParts = {};
 
-    table.insert(prefixParts, "Aha, I found it!");
+    local trueDisplayName;
 
-    if PZISPlayerUtils.isPlayerHeld(inventoryType) then
-        table.insert(prefixParts, "I have");
+    if isPlural then
+        trueDisplayName = stringUtil:pluralize(displayName);
     else
-        if isPlural then
-            table.insert(prefixParts, "There are");
+        if stringUtil:startsWithAny(displayName, {"a", "e", "i", "o", "u"}) then
+            trueDisplayName = "an " .. displayName;
         else
-            table.insert(prefixParts, "There is");
+            trueDisplayName = "a " .. displayName;
+        end 
+    end
+
+    if isPlayerHeld and isPlural then
+        -- Player holds items in their base inventory or backpack
+        local isInventory = inventoryType == "inventory";
+
+        if isInventory then
+            table.insert(messageParts, getText("IGUI_IS_Search_Success_Inventory_Plural", count, trueDisplayName));
+        else
+            table.insert(messageParts, getText("IGUI_IS_Search_Success_Backpack_Plural", count, trueDisplayName))
+        end
+    elseif isPlayerHeld then        
+        local isInventory = inventoryType == "inventory";
+
+        if isInventory then
+            table.insert(messageParts, getText("IGUI_IS_Search_Success_Inventory_Singular"), trueDisplayName);
+        else
+            table.insert(messageParts, getText("IGUI_IS_Search_Success_Backpack_Singular"), trueDisplayName);
+        end
+    elseif isPlural then
+        if inventoryType == "floor" then
+            table.insert(messageParts, getText("IGUI_IS_Search_Success_Floor_Plural", count, trueDisplayName));
+        else
+            table.insert(messageParts, getText("IGUI_IS_Search_Success_Container_Plural", count, trueDisplayName));
+        end
+    else
+        if inventoryType == "floor" then
+            table.insert(messageParts, getText("IGUI_IS_Search_Success_Floor_Singular", trueDisplayName));
+        else
+            table.insert(messageParts, getText("IGUI_IS_Search_Success_Container_Singular", trueDisplayName));
         end
     end
 
-    if isPlural then
-        table.insert(prefixParts, count);
-    else
-        table.insert(prefixParts, "a");
-    end
-
-    return spaceConcat(prefixParts);
-end
-
-PZISPlayerUtils.getSuccessSuffix = function(inventoryType)
-    local suffixParts = {};
-
-    if inventoryType == "floor" then
-        table.insert(suffixParts, "on");
-    else
-        table.insert(suffixParts, "in");
-    end
-
-    if inventoryType == "backpack" or inventoryType == "inventory" then
-        table.insert(suffixParts, "my");
-    else
-        table.insert(suffixParts, "the");
-    end
-
-    table.insert(suffixParts, inventoryType);
-
-    return spaceConcat(suffixParts);
+    return spaceConcat(messageParts);
 end
 
 PZISPlayerUtils.isPlayerHeld = function(inventoryType)

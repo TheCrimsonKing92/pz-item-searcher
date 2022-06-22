@@ -50,4 +50,14 @@ function PZISStringUtils:startsWith(str, starting)
     return starting == "" or str:sub(1, #starting) == starting;
 end
 
+function PZISStringUtils:startsWithAny(str, possibilities)
+    for _, v in ipairs(possibilities) do
+        if PZISStringUtils:startsWith(v) then
+            return true;
+        end
+    end
+
+    return false;
+end
+
 return PZISStringUtils;
