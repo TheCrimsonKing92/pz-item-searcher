@@ -16,22 +16,22 @@ function PZISStringUtils:pascalize(input)
 end
 
 function PZISStringUtils:pluralize(input)
-    if self:endsWith(original, "y") then
+    if self:endsWith(input, "y") then
         local parts = {};
-        table.insert(parts, original:sub(1, #original - 1));
+        table.insert(parts, input:sub(1, #input - 1));
         table.insert(parts, "ies");
 
         return table.concat(parts);
     end
 
-    if not self:endsWith(original, "s") then
+    if not self:endsWith(input, "s") then
         local parts = {};
-        table.insert(parts, original);
+        table.insert(parts, input);
         table.insert(parts, "s");
 
         return table.concat(parts);
     else
-        return original;
+        return input;
     end
 end
 
