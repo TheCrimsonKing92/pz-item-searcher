@@ -9,6 +9,7 @@ local stringUtil = require("PZISStringUtils");
 local textManager = getTextManager();
 local SMALL_FONT = textManager:getFontHeight(UIFont.Small)
 local buttonHeight = SMALL_FONT + 2 * 4;
+local buttonWidth = 70;
 
 local alphas = {"a", "A", "b", "B", "c", "C", "d", "D", "e", "E", "f", "F", "g", "G", "h", "H", "i", "I", "j", "J", "k", "K", "l", 'L', 'm', 'M', 'n', 'N', 'o', 'O', 'p', 'P', 'q', 'Q', 'r', 'R', 's', 'S', 't', 'T', 'u', 'U', 'v', 'V', 'w', 'W', 'x', 'X', 'y', 'Y', 'z', 'Z'};
 local patternMagics = {"-"};
@@ -23,9 +24,24 @@ ITEMSEARCH_PERSISTENT_DATA.searchTarget = nil;
 local ui = null;
 local uiOpen = false;
 
+local uiLeftPadding = 10;
+
+local searchInputYOffset = 40;
+
+local tableHeight = 170;
+local tableVerticalPadding = 30;
+local tableWidth = 800;
+local tableWidthAdjustment = 425;
+local tableYOffset = 130;
+
+local searchingForTextYOffset = 130;
+
+local startSearchYOffset = 155;
+
 ItemSearchPanel = ISCollapsableWindow:derive("ItemSearchPanel");
 
 local function findBestMatch(originalLength, searchPattern)
+    local pairs = pairs;
     local nameSet = ITEMSEARCH_PERSISTENT_DATA.displayNameSet;
     local result = nil;
 
@@ -88,61 +104,42 @@ function ItemSearchPanel:createChildren()
     local buttonWidth = 75;
     local padBottom = 10;
 
+    local inputLabel = ISLabel:new(uiLeftPadding, searchInputYOffset, SMALL_FONT, "Search for what item?", 1, 1, 1, 1, UIFont.Small, true);
+    self:addChild(inputLabel);
     local textSize = textManager:MeasureStringX(UIFont.Small, "Search for what item?");
 
-    local id = "Input";
-    local inputY = 40;
     local inputWidth = 150;
     -- 10 is our left-margin, 8 to separate the box from the label, the rest from the text itself
     -- title, x, y, width, height
-    self.itemEntry = ISTextEntryBox:new("", 18 + textSize, inputY, inputWidth, buttonHeight);
-    self.itemEntry.id = id;
+    self.itemEntry = ISTextEntryBox:new("", uiLeftPadding + textSize + 8, searchInputYOffset - (buttonHeight / 6), inputWidth, buttonHeight);
+    self.itemEntry.id = "Input";
     self.itemEntry:initialise();
     self.itemEntry:instantiate();
     self.itemEntry.onCommandEntered = function () self:getMatch() end;
+    self.itemEntry.tooltip = "Press Enter / Return to identify your item"
     self:addChild(self.itemEntry);
 
-    -- x, y, width, height, name, changeOptionTarget, changeOptionMethod, changeOptionArg1, changeOptionArg2
-    self.searchInventoryTick = ISTickBox:new(textSize + inputWidth + 25, inputY, 10, 10, "", nil, nil);
-    self.searchInventoryTick:initialise();
-    self.searchInventoryTick:instantiate();
-    self.searchInventoryTick.selected[1] = true;
-    self.searchInventoryTick:addOption("Search Inventory");
-    self:addChild(self.searchInventoryTick);
+    self.searchOptions = ISTickBox:new(10, searchInputYOffset + 20, 10, 10, "Search Where?", nil, nil);
+    self.searchOptions:initialise();
+    self.searchOptions:instantiate();
 
-    local searchInventoryWidth = textManager:MeasureStringX(UIFont.Small, "Search Inventory");
+    self.searchOptions:addOption("Search Inventory");
+    self.searchOptions.selected[1] = true;
+    self.searchOptions:addOption("Search Nearby");
+    self.searchOptions.selected[2] = true;
+    self.searchOptions:addOption("Search Room");
 
-    -- 10 is our leftPad, searchInventoryWidth is the text length of the leftward tick, 10 is the size of the leftward tick itself, then we need some additional padding
-    -- local secondTickX = 10 + searchInventoryWidth + 10 + 13;
-    local searchNearbyX = textSize + inputWidth + 25 + 25 + searchInventoryWidth;
-    self.searchNearbyTick = ISTickBox:new(searchNearbyX, inputY, 10, 10, "", nil, nil);
-    self.searchNearbyTick:initialise();
-    self.searchNearbyTick:instantiate();
-    self.searchNearbyTick.selected[1] = true;
-    self.searchNearbyTick:addOption("Search Nearby");
-    self:addChild(self.searchNearbyTick);
+    if not self:isPlayerInRoom() then
+        self.searchOptions:disableOption("Search Room", true);
+        self.searchOptions.tooltip = "Room search unavailable outside";
+    else
+        self.searchOptions.selected[3] = true;
+    end
 
-    local searchNearbyTextWidth = textManager:MeasureStringX(UIFont.Small, "Search Nearby");
-    local searchRoomX = searchNearbyX + 25 + searchNearbyTextWidth;
+    local oldOnMouseMove = self.searchOptions.onMouseMove;
+    self.searchOptions.onMouseMove = function(dx, dy) oldOnMouseMove(dx, dy) if self.mouseOverOption ~= 0 then self:updateSearchOptionsTooltipText() end end;
 
-    self.searchRoomTick = ISTickBox:new(searchRoomX, inputY, 10, 10, "", nil, nil);
-    self.searchRoomTick:initialise();
-    self.searchRoomTick:instantiate();
-    self.searchRoomTick.selected[1] = true;
-    self.searchRoomTick:addOption("Search Room");
-    self:addChild(self.searchRoomTick);
-
-    --[[
-    local searchRoomTextWidth = textManager:MeasureStringX(UIFont.Small, "Search Room");
-    local searchBuildingX = searchRoomX + 25 + searchRoomTextWidth;
-
-    self.searchBuildingTick = ISTickBox:new(searchBuildingX, inputY, 10, 10, "", nil, nil);
-    self.searchBuildingTick:initialise();
-    self.searchBuildingTick:instantiate();
-    self.searchBuildingTick.selected[1] = true;
-    self.searchBuildingTick:addOption("Search Building");
-    self:addChild(self.searchBuildingTick);
-    ]]--
+    self:addChild(self.searchOptions);
 
     self:createStartSearch();
 end
@@ -176,14 +173,14 @@ function ItemSearchPanel:createStartSearch()
         self:startSearch();
     end
 
-    local buttonY = 108;
+    local yOffset = startSearchYOffset;
 
     if self.searchChoices ~= nil then
-        buttonY = buttonY + 202;
+        yOffset = yOffset + tableHeight + tableVerticalPadding + 5;
     end
 
     -- x, y, width, height, text, click target, click function
-    self.startSearchButton = ISButton:new(10, buttonY, 70, buttonHeight, "Start Searching", self, buttonCallback);
+    self.startSearchButton = ISButton:new(uiLeftPadding, yOffset, buttonWidth, buttonHeight, "Start Searching", self, buttonCallback);
     self.startSearchButton.enable = false;
     self.startSearchButton:initialise();
     self.startSearchButton:instantiate();
@@ -196,7 +193,7 @@ function ItemSearchPanel:createTable()
     end
     
     -- x, y, width, height, callback
-    self.searchChoices = SearchChoiceTable:new(10, 105, 800, 170, tableCallback);
+    self.searchChoices = SearchChoiceTable:new(uiLeftPadding, tableYOffset, tableWidth, tableHeight, tableCallback);
     self.searchChoices:initialise();
     self.searchChoices:setVisible(false);
     self:addChild(self.searchChoices);
@@ -223,9 +220,6 @@ function ItemSearchPanel:getExactMatches(searchText, itemsByDisplay, nameSet)
 end
 
 function ItemSearchPanel:getMatch()
-    local ipairs = ipairs;
-    local pairs = pairs;
-
     local itemsByDisplay = ITEMSEARCH_PERSISTENT_DATA.itemsByDisplayName;
     local nameSet = ITEMSEARCH_PERSISTENT_DATA.displayNameSet;
 
@@ -264,6 +258,23 @@ function ItemSearchPanel:getPatternMatches(searchText, itemsByDisplay)
     end
 end
 
+function ItemSearchPanel:getSearchingForText()
+    local searchingFor = "Searching For: ";
+
+    local searchTarget = ITEMSEARCH_PERSISTENT_DATA.searchTarget;
+
+    if searchTarget ~= nil then
+        local displayName = searchTarget.displayName;
+        local name = searchTarget.name;
+
+        searchingFor = searchingFor .. displayName .. " (Name: " .. name .. ")";
+    else
+        searchingFor = searchingFor .. " Search item not set! Enter an unambiguous display name, or double-click a table result.";
+    end
+
+    return searchingFor;
+end
+
 function ItemSearchPanel:isAdjacent(square)
     local current = self.character:getCurrentSquare();
     local playerX = current:getX();
@@ -288,6 +299,10 @@ function ItemSearchPanel:isAdjacent(square)
     end
 end
 
+function ItemSearchPanel:isPlayerInRoom()
+    return self.character:getSquare():getRoom() ~= nil
+end
+
 function ItemSearchPanel:pluralize(original)
     if stringUtil:endsWith(original, "y") then
         local parts = {};
@@ -310,7 +325,8 @@ end
 
 function ItemSearchPanel:populateChoices(items)
     if self.searchChoices == nil then
-        self:setHeight(self:getHeight() + 200);
+        self:setHeight(self:getHeight() + tableHeight + tableVerticalPadding);
+        self:setWidth(self:getHeight() + tableWidthAdjustment);
         self:createTable();
         self:recreateStartSearch();
     end
@@ -320,10 +336,15 @@ function ItemSearchPanel:populateChoices(items)
 end
 
 function ItemSearchPanel:queueSearches()
-    local searchInventory = self.searchInventoryTick.selected[1];
-    local searchNearby = self.searchNearbyTick.selected[1];
-    local searchRoom = self.searchRoomTick.selected[1];
-    -- local searchBuilding = self.searchBuildingTick.selected[1];
+    local searchInventory = self.searchOptions.selected[1];
+    local searchNearby = self.searchOptions.selected[2];
+    local searchRoom = self.searchOptions.selected[3];
+    -- local searchBuilding = self.searchOptions.selected[4];
+
+    if not searchInventory and not searchNearby and not searchRoom then
+        print("No search method selected");
+        return;
+    end
 
     -- Gonna have displayName, name, and fullType, either the player entered an unambiguous name or we had them choose which they intend to get
     local searchTarget = ITEMSEARCH_PERSISTENT_DATA.searchTarget;
@@ -350,6 +371,7 @@ function ItemSearchPanel:queueSearches()
         end
         
         local consumedCells, containerCells, containerMap, sortedContainers = SearchRoomContainerAction.findRoomContainers(room, playerX, playerY);
+
         if containerCells:size() == 0 then
             self.character:Say("There's nothing to search in here.");
             return;
@@ -369,7 +391,7 @@ function ItemSearchPanel:queueSearches()
         playerUtil.walkToContainer(self.character, representative);
         -- Queues the search
         ISTimedActionQueue.add(SearchRoomContainerAction:new(self.character, searchTarget, first, containerCells, containerMap, consumedCells));
-    end;
+    end
 end
 
 function ItemSearchPanel:recreateStartSearch()
@@ -378,25 +400,13 @@ function ItemSearchPanel:recreateStartSearch()
 end
 
 function ItemSearchPanel:render()
-    -- Would not show up when put in createChildren. Perhaps overwritten/over-rendered by built-in ISCollapsableWindow functionality
-    self:drawText("Search for what item?", 10, 42, 1, 1, 1, 1, UIFont.Small);
+    local yOffset = searchingForTextYOffset;
 
-    local searchingFor = "Searching For: ";
-
-    local searchTarget = ITEMSEARCH_PERSISTENT_DATA.searchTarget;
-
-    if searchTarget ~= nil then
-        local displayName = searchTarget.displayName;
-        local name = searchTarget.name;
-
-        searchingFor = searchingFor .. displayName .. " (Name: " .. name .. ")";
-    else
-        searchingFor = searchingFor .. " Search item not set! Enter an unambiguous display name, or double-click a table result.";
+    if self.searchChoices ~= nil then
+        yOffset = yOffset + tableHeight + tableVerticalPadding + 5;
     end
 
-    -- Height of the button below, a little padding, and enough height for the text
-    local heightOffset = buttonHeight + SMALL_FONT + 12;
-    self:drawText(searchingFor, 10, 80, 1, 1, 1, 1, UIFont.Small)
+    self:drawText(self:getSearchingForText(), uiLeftPadding, yOffset, 1, 1, 1, 1, UIFont.Small)
 end
 
 function ItemSearchPanel:removeStartSearch()
@@ -413,7 +423,8 @@ function ItemSearchPanel:resetChoices()
     self.searchChoices:clear();
     self:removeChild(self.searchChoices);
     self.searchChoices = nil;
-    self:setHeight(self:getHeight() - 200);
+    self:setHeight(self:getHeight() - (tableHeight + tableVerticalPadding));
+    self:setWidth(self:getWidth() - tableWidthAdjustment);
     self:recreateStartSearch();
 end
 
@@ -443,6 +454,21 @@ function ItemSearchPanel:update()
     ISCollapsableWindow.update(self);
 end
 
+function ItemSearchPanel:updateSearchOptionsTooltipText()
+    local mousedOption = self.searchOptions.mouseOverOption;
+    if mousedOption == 1 then
+        self.searchOptions.tooltip = "Search your personal inventory";
+    elseif mousedOption == 2 then
+        self.searchOptions.tooltip = "Search nearby inventories";
+    elseif mousedOption == 3 and not self:isPlayerInRoom() then
+        self.searchOptions.tooltip = "Room search unavailable outside";
+    elseif mousedOption == 3 then
+        self.searchOptions.tooltip = "Search all room containers";
+    else
+        self.searchOptions.tooltip = nil;
+    end
+end
+
 function cacheItems()
     print("Startup, getting cache of items available for searching");
     local displayNameSet = ITEMSEARCH_PERSISTENT_DATA.displayNameSet;
@@ -470,9 +496,9 @@ function ItemSearchPanel:new(player)
     local o = {};
     local x = getMouseX() + 10;
     local y = getMouseY() + 10;
-    local width = 830;
+    local width = 580;
     -- Initial height doesn't contain space for the SearchChoiceTable
-    local height = 150;
+    local height = 200;
 
     o = ISCollapsableWindow:new(x, y, width, height);
     setmetatable(o, self);
