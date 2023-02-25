@@ -381,7 +381,7 @@ function ItemSearchPanel:queueSearches()
         -- Queues the walk to the container square
         playerUtil.walkToContainer(self.character, representative);
         -- Queues the search
-        ISTimedActionQueue.add(SearchRoomContainerAction:new(self.character, searchTarget, first, containerCells, containerMap, consumedCells));
+        ISTimedActionQueue.add(SearchRoomContainerAction:new(self.character, searchTarget, takeItem, first, containerCells, containerMap, consumedCells));
     end
 end
 

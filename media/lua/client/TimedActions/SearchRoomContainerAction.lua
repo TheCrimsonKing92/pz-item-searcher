@@ -103,29 +103,23 @@ function SearchRoomContainerAction:findItem(container)
     local items = container:getItems();
     local itemsCount = items:size();
 
-    if itemsCount > 0 then
-        for x = 0, itemsCount - 1 do
-            local item = items:get(x);
-
-            local displayName = item:getDisplayName();
-            local name = item:getName();
-            local fullType = item:getFullType();
-
-            if displayNameSearch == displayName then
-                print("Display name hit against search: " .. displayNameSearch);
-                print("Hit item's name: " .. name .. ", fullType: " .. fullType);
-                print("Search items name: " .. nameSearch .. ", fullType: " .. fullTypeSearch);
-            end
-
-            if displayNameSearch == displayName and (nameSearch == name or fullTypeSearch == fullType) then
-                -- Ask the InventoryContainer for the count, not including items that can be drained, recursing through inventory container items
-                return container:getNumberOfItem(fullType, false, true);
-            end
-        end
-    else
-        self:say("There's nothing in this " .. container:getType() .. "...");
+    if itemsCount < 1 then
         return nil;
+    end;
+
+    for x = 0, itemsCount - 1 do
+        local item = items:get(x);
+
+        local displayName = item:getDisplayName();
+        local name = item:getName();
+        local fullType = item:getFullType();
+
+        if displayNameSearch == displayName and (nameSearch == name or fullTypeSearch == fullType) then
+            return item;
+        end
     end
+
+    return nil;
 end
 
 function SearchRoomContainerAction:getCharacterDistanceFrom(key)
@@ -187,7 +181,7 @@ function SearchRoomContainerAction:queueNext()
     -- Queues the walk to the containers, allow it to clear other actions
     luautils.walkToContainer(representative, self.character:getPlayerNum());
     -- Queues the search
-    ISTimedActionQueue.add(SearchRoomContainerAction:new(self.character, self.searchTarget, next, self.containerCells, self.containerMap, self.consumedCells));
+    ISTimedActionQueue.add(SearchRoomContainerAction:new(self.character, self.searchTarget, self.takeItem, next, self.containerCells, self.containerMap, self.consumedCells));
 end
 
 function SearchRoomContainerAction:say(message)
@@ -248,16 +242,25 @@ function SearchRoomContainerAction:update()
         self:startContainerSearch();
     end
 
-    if self.currentSearchTimer >= self.currentContainer.time then
+    if self.currentSearchTimer >= currentContainer.time then
+        local containerType = currentContainer.container:getType();
+
         if currentContainer.itemCount > 0 then
-            local findResult = self:findItem(currentContainer.container);
+            local item = self:findItem(currentContainer.container);
 
-            if findResult ~= nil and findResult > 0 then
+            if item == nil then                
+                playerUtil.say(self.character, "There's nothing in this " .. containerType .. "...");
+            else
                 self.foundItem = true;
-            end
 
-            local containerType = currentContainer.container:getType();
-            playerUtil.sayResult(self.character, containerType, self.searchTarget.displayName, findResult);
+                -- Ask the InventoryContainer for the count, not including items that can be drained, recursing through inventory container items
+                playerUtil.sayResult(self.character, containerType, self.searchTarget.displayName, currentContainer.container:getNumberOfItem(item:getFullType(), false, true));
+
+                if self.takeItem then
+                    playerUtil.say(self.character, "Let me nab that...");
+                    ISTimedActionQueue.add(ISInventoryTransferAction:new(self.character, item, currentContainer.container, self.character:getInventory()));
+                end
+            end
         end
         
         self.currentContainer = nil;
@@ -270,7 +273,7 @@ function SearchRoomContainerAction:waitToStart()
     return self.character:shouldBeTurning();
 end
 
-function SearchRoomContainerAction:new(character, searchTarget, containerCell, containerCells, containerMap, consumedCells)
+function SearchRoomContainerAction:new(character, searchTarget, takeItem, containerCell, containerCells, containerMap, consumedCells)
     local o = ISBaseTimedAction.new(self, character);
 
     o.character = character;
@@ -295,6 +298,8 @@ function SearchRoomContainerAction:new(character, searchTarget, containerCell, c
     
     -- Info about the item we're looking for
     o.searchTarget = searchTarget;
+    -- Should we take the item if we find it?
+    o.takeItem = takeItem;
     -- Are we at the start of a container search simulation?
     o.startOfContainerSearch = true;
     -- Current container target
