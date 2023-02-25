@@ -28,7 +28,13 @@ PZISPlayerUtils.getFailurePrefix = function(displayName)
     local message = "I couldn't find";
 
     if not stringUtil:endsWith(displayName, "s") then
-        message = message .. " a";
+        if stringUtil:startsWithVowel(displayName) then
+            message = message .. " an";
+        else
+            message = message .. " a";
+        end
+    else
+        message = message .. " any";
     end
 
     return message;
@@ -92,18 +98,22 @@ end
 PZISPlayerUtils.getSuccessMessage = function(inventoryType, displayName, count)
     local messageParts = {};
 
-    table.insert(messageParts, PZISPlayerUtils.getSuccessPrefix(inventoryType, count));
+    table.insert(messageParts, PZISPlayerUtils.getSuccessPrefix(inventoryType, displayName, count));
     table.insert(messageParts, PZISPlayerUtils.getSuccessBody(displayName, count));
     table.insert(messageParts, PZISPlayerUtils.getSuccessSuffix(inventoryType, count));
 
     return spaceConcat(messageParts);
 end
 
-PZISPlayerUtils.getSuccessPrefix = function(inventoryType, count)
+PZISPlayerUtils.getSuccessPrefix = function(inventoryType, displayName, count)
     local isPlural = count > 1;
     local prefixParts = {};
 
-    table.insert(prefixParts, "Aha, I found it!");
+    if isPlural then
+        table.insert(prefixParts, "Aha, I found some!");
+    else
+        table.insert(prefixParts, "Aha, I found it!");
+    end
 
     if PZISPlayerUtils.isPlayerHeld(inventoryType) then
         table.insert(prefixParts, "I have");
@@ -118,7 +128,11 @@ PZISPlayerUtils.getSuccessPrefix = function(inventoryType, count)
     if isPlural then
         table.insert(prefixParts, count);
     else
-        table.insert(prefixParts, "a");
+        if stringUtil:startsWithVowel(displayName) then
+            table.insert(prefixParts, "an");
+        else
+            table.insert(prefixParts, "a");
+        end
     end
 
     return spaceConcat(prefixParts);

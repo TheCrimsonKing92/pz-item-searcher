@@ -1,4 +1,10 @@
+local collectionUtil = require("PZISCollectionUtils");
+local Set = collectionUtil.Set;
+
 local PZISStringUtils = {};
+
+local vowels = {"a", "A", "e", "E", "i", "I", "o", "O", "u", "U"};
+local VOWEL_SET = Set:new(vowels);
 
 function PZISStringUtils:endsWith(str, ending)
     return ending == "" or str:sub(-#ending) == ending;
@@ -48,6 +54,10 @@ end
 
 function PZISStringUtils:startsWith(str, starting)
     return starting == "" or str:sub(1, #starting) == starting;
+end
+
+function PZISStringUtils:startsWithVowel(str)
+    return VOWEL_SET:contains(str:sub(1, 1));    
 end
 
 return PZISStringUtils;
