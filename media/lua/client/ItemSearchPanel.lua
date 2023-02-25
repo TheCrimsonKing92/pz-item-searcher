@@ -119,7 +119,7 @@ function ItemSearchPanel:createChildren()
     self.itemEntry.tooltip = "Press Enter / Return to identify your item"
     self:addChild(self.itemEntry);
 
-    self.searchOptions = ISTickBox:new(10, searchInputYOffset + 20, 10, 10, "Search Where?", nil, nil);
+    self.searchOptions = ISTickBox:new(uiLeftPadding, searchInputYOffset + 25, 10, 10, "Search Where?", nil, nil);
     self.searchOptions:initialise();
     self.searchOptions:instantiate();
 
@@ -140,6 +140,15 @@ function ItemSearchPanel:createChildren()
     self.searchOptions.onMouseMove = function(dx, dy) oldOnMouseMove(dx, dy) if self.mouseOverOption ~= 0 then self:updateSearchOptionsTooltipText() end end;
 
     self:addChild(self.searchOptions);
+
+    local takeItemXOffset = textManager:MeasureStringX(UIFont.Small, "Search Inventory") + 20 + 30;
+    self.takeItemOption = ISTickBox:new(uiLeftPadding + takeItemXOffset, searchInputYOffset + 25, 10, 10, "Take Item", nil, nil);
+    self.takeItemOption:initialise();
+    self.takeItemOption:instantiate();
+    self.takeItemOption:addOption("Take Item");
+    self.takeItemOption.selected[1] = false;
+    self.takeItemOption.tooltip = "Queue an inventory transfer action if the item is found";
+    self:addChild(self.takeItemOption);
 
     self:createStartSearch();
 end
@@ -303,26 +312,6 @@ function ItemSearchPanel:isPlayerInRoom()
     return self.character:getSquare():getRoom() ~= nil
 end
 
-function ItemSearchPanel:pluralize(original)
-    if stringUtil:endsWith(original, "y") then
-        local parts = {};
-        table.insert(parts, original:sub(1, #original - 1));
-        table.insert(parts, "ies");
-
-        return table.concat(parts);
-    end
-
-    if not stringUtil:endsWith(original, "s") then
-        local parts = {};
-        table.insert(parts, original);
-        table.insert(parts, "s");
-
-        return table.concat(parts);
-    else
-        return original;
-    end
-end
-
 function ItemSearchPanel:populateChoices(items)
     if self.searchChoices == nil then
         self:setHeight(self:getHeight() + tableHeight + tableVerticalPadding);
@@ -341,6 +330,8 @@ function ItemSearchPanel:queueSearches()
     local searchRoom = self.searchOptions.selected[3];
     -- local searchBuilding = self.searchOptions.selected[4];
 
+    local takeItem = self.takeItemOption.selected[1];
+
     if not searchInventory and not searchNearby and not searchRoom then
         print("No search method selected");
         return;
@@ -350,11 +341,11 @@ function ItemSearchPanel:queueSearches()
     local searchTarget = ITEMSEARCH_PERSISTENT_DATA.searchTarget;
     -- function SearchInventoryAction:new(playerNum, character, inventory, searchTarget)
     if searchInventory then
-        ISTimedActionQueue.add(SearchInventoryAction:new(self.playerNum, self.character, searchTarget, false));
+        ISTimedActionQueue.add(SearchInventoryAction:new(self.playerNum, self.character, searchTarget, false, takeItem));
     end
 
     if searchNearby then
-        ISTimedActionQueue.add(SearchInventoryAction:new(self.playerNum, self.character, searchTarget, true));
+        ISTimedActionQueue.add(SearchInventoryAction:new(self.playerNum, self.character, searchTarget, true, takeItem));
     end
 
     if searchRoom then

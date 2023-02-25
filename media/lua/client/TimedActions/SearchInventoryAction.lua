@@ -34,9 +34,7 @@ function SearchInventoryAction:findItem(inventory, displayNameSearch, nameSearch
         local fullType = item:getFullType();
 
         if displayNameSearch == displayName and (nameSearch == name or fullTypeSearch == fullType) then
-            -- Ask the InventoryContainer for the count, not including items that can be drained, recursing through inventory container items
-            local count = inventory:getNumberOfItem(fullType, false, true);
-            return count;
+            return inventory, item;
         end
     end
 
@@ -54,33 +52,18 @@ end
 
 function SearchInventoryAction:perform()
     -- TODO: Move reporting of results to this (or a new) function instead of keeping it embedded in the search
-    local found = self:searchInventory();
+    local inventory, item = self:searchInventory();
 
-    if found then
+    if item ~= nil then
         self:clearAdditionalSearches();
+
+        if self.takeItem then
+            self:say("Let me nab that...");
+            ISTimedActionQueue.add(ISInventoryTransferAction:new(self.character, item, inventory, self.character:getInventory()));
+        end
     end
 
     ISBaseTimedAction.perform(self);
-end
-
-function SearchInventoryAction:pluralize(original)
-    if stringUtil:endsWith(original, "y") then
-        local parts = {};
-        table.insert(parts, original:sub(1, #original - 1));
-        table.insert(parts, "ies");
-
-        return table.concat(parts);
-    end
-
-    if not stringUtil:endsWith(original, "s") then
-        local parts = {};
-        table.insert(parts, original);
-        table.insert(parts, "s");
-
-        return table.concat(parts);
-    else
-        return original;
-    end
 end
 
 function SearchInventoryAction:say(message)
@@ -127,16 +110,26 @@ function SearchInventoryAction:searchInventory()
                 end            
             end        
     
-            local count = self:findItem(localInventory, displayName, name, fullType);
+            local specificInventory, item = self:findItem(localInventory, displayName, name, fullType);
+
+            local count;
+
+            if item == nil then
+                print("Didn't find an item match in the container");
+                count = nil;
+            else
+                print("Found an item match in the container!");
+                -- Ask the InventoryContainer for the count, not including items that can be drained, recursing through inventory container items
+                count = specificInventory:getNumberOfItem(item:getFullType(), false, true);
+            end
+            
             playerUtil.sayResult(self.character, containerType, displayName, count);
     
-            if count ~= nil then
-                return true;
-            end
+            return specificInventory, item;
         end
     end
 
-    return false;
+    return nil;
 end
 
 function SearchInventoryAction:start()
@@ -160,7 +153,7 @@ function SearchInventoryAction:start()
     self:setActionAnim("TransferItemOnSelf");
 end
 
-function SearchInventoryAction:new(playerNum, character, searchTarget, isNearby)
+function SearchInventoryAction:new(playerNum, character, searchTarget, isNearby, takeItem)
     local o = ISBaseTimedAction.new(self, character);
     o.forceProgressBar = true;
     o.isNearby = isNearby or false;
@@ -193,6 +186,7 @@ function SearchInventoryAction:new(playerNum, character, searchTarget, isNearby)
     o.searchTarget = searchTarget;
     o.stopOnWalk = true;
     o.stopOnRun = true;
+    o.takeItem = takeItem;
 
     return o;
 end
