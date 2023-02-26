@@ -167,7 +167,6 @@ PZISPlayerUtils.say = function(character, message)
 end
 
 PZISPlayerUtils.sayResult = function(character, inventoryType, displayName, count)
-    print("sayResult called with inventoryType: " .. inventoryType .. ", displayName: " .. displayName .. ", count: " .. count);
     local message;
 
     if count ~= nil and count > 0 then
