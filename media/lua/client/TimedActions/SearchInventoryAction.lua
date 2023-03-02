@@ -112,20 +112,18 @@ function SearchInventoryAction:searchInventory()
     
             local specificInventory, item = self:findItem(localInventory, displayName, name, fullType);
 
-            local count;
-
-            if item == nil then
-                print("Didn't find an item match in the container");
-                count = nil;
-            else
+            if item ~= nil then
                 print("Found an item match in the container!");
                 -- Ask the InventoryContainer for the count, not including items that can be drained, recursing through inventory container items
                 count = specificInventory:getNumberOfItem(item:getFullType(), false, true);
-            end
             
-            playerUtil.sayResult(self.character, containerType, displayName, count);
-    
-            return specificInventory, item;
+                playerUtil.sayResult(self.character, containerType, displayName, count);
+        
+                return specificInventory, item;
+            else
+                print("Didn't find an item match in the container");
+                playerUtil.sayResult(self.character, containerType, displayName, nil);
+            end
         end
     end
 

@@ -1,3 +1,4 @@
+local objectUtil = require("PZISObjectUtils");
 local stringUtil = require("PZISStringUtils");
 
 local PZISPlayerUtils = {};
@@ -46,7 +47,7 @@ PZISPlayerUtils.getFailureSuffix = function(inventoryType)
     elseif inventoryType == "floor" then
         return "on the " .. inventoryType;
     else
-        return "in the " .. inventoryType;
+        return "in the " .. objectUtil:getContainerNameByType(inventoryType);
     end
 end
 
@@ -153,7 +154,11 @@ PZISPlayerUtils.getSuccessSuffix = function(inventoryType)
         table.insert(suffixParts, "the");
     end
 
-    table.insert(suffixParts, inventoryType);
+    if inventoryType == "floor" or inventoryType == "inventory" or inventoryType == "backpack" then
+        table.insert(suffixParts, inventoryType);
+    else
+        table.insert(suffixParts, objectUtil:getContainerNameByType(inventoryType));
+    end
 
     return spaceConcat(suffixParts);
 end
@@ -181,12 +186,13 @@ end
 PZISPlayerUtils.sayStart = function(character, containerType, containerItemCount)
     local message;
 
+    local containerName = objectUtil:getContainerNameByType(containerType);
     local playerHeld = PZISPlayerUtils.isPlayerHeld(containerType);
 
     if containerItemCount > 0 then
-        message = "Hm, let's see what's in this " .. containerType;
+        message = "Hm, let's see what's in this " .. containerName;
     else
-        message = "I don't think there's anything in this " .. containerType;
+        message = "I don't think there's anything in this " .. containerName;
     end
 
     PZISPlayerUtils.say(character, message);

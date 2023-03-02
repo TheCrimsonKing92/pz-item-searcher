@@ -3,6 +3,7 @@ require "TimedActions/ISBaseTimedAction"
 local collectionUtil = require("PZISCollectionUtils");
 local Set = collectionUtil.Set;
 local playerUtil = require("PZISPlayerUtils");
+local objectUtil = require("PZISObjectUtils");
 local stringUtil = require("PZISStringUtils");
 
 SearchRoomContainerAction = ISBaseTimedAction:derive("SearchRoomContainerAction");
@@ -221,7 +222,12 @@ function SearchRoomContainerAction:update()
     if self.foundItem then
         self:clearAdditionalSearches();
         self:forceComplete();
-        return;
+
+        if self.takeItem then              
+            playerUtil.say(self.character, "Let me nab that...");
+            ISTimedActionQueue.add(self.transferItemAction);     
+            return;
+        end
     end
 
     if self.character:pressedMovement(false) or self.character:pressedCancelAction() then
@@ -231,16 +237,18 @@ function SearchRoomContainerAction:update()
 
     self.currentSearchTimer = self.currentSearchTimer + getGameTime():getMultiplier();
 
-    if self.currentContainer == nil then
+    if self.currentContainer == nil and #self.containerUpdateQueue > 0 then
         self.currentContainer = table.remove(self.containerUpdateQueue, 1);
         self.startOfContainerSearch = true;
     end
 
-    local currentContainer = self.currentContainer;
-
     if self.startOfContainerSearch then
         self:startContainerSearch();
+    elseif self.currentContainer == nil then
+        return;
     end
+
+    local currentContainer = self.currentContainer;
 
     if self.currentSearchTimer >= currentContainer.time then
         local containerType = currentContainer.container:getType();
@@ -248,17 +256,17 @@ function SearchRoomContainerAction:update()
         if currentContainer.itemCount > 0 then
             local item = self:findItem(currentContainer.container);
 
-            if item == nil then                
-                playerUtil.say(self.character, "There's nothing in this " .. containerType .. "...");
+            if item == nil then
+                local containerName = objectUtil:getContainerName(currentContainer.container);           
+                playerUtil.say(self.character, "Not in this " .. containerName .. "...");
             else
                 self.foundItem = true;
+                self.transferItemAction = ISInventoryTransferAction:new(self.character, item, item:getContainer(), self.character:getInventory());
 
                 -- Ask the InventoryContainer for the count, not including items that can be drained, recursing through inventory container items
                 playerUtil.sayResult(self.character, containerType, self.searchTarget.displayName, currentContainer.container:getNumberOfItem(item:getFullType(), false, true));
 
                 if self.takeItem then
-                    playerUtil.say(self.character, "Let me nab that...");
-                    ISTimedActionQueue.add(ISInventoryTransferAction:new(self.character, item, currentContainer.container, self.character:getInventory()));
                 end
             end
         end
@@ -312,7 +320,7 @@ function SearchRoomContainerAction:new(character, searchTarget, takeItem, contai
     local secondsPerItem = 30;
     local f = 1 / getGameTime():getMinutesPerDay() * 60;
 
-    local effectiveTime = 0;
+    local effectiveTime = 1;
     local containersToSearch = containerMap[containerCell];
 
     local containerUpdateQueue = {};
@@ -322,7 +330,7 @@ function SearchRoomContainerAction:new(character, searchTarget, takeItem, contai
         local itemsCount = containerItems:size();
         local containerTime = secondsPerItem / f;
 
-        if itemsCount > 0 then
+        if itemsCount > 1 then
             containerTime = itemsCount * secondsPerItem / f;
         end
 
