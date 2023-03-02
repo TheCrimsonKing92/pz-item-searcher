@@ -265,9 +265,6 @@ function SearchRoomContainerAction:update()
 
                 -- Ask the InventoryContainer for the count, not including items that can be drained, recursing through inventory container items
                 playerUtil.sayResult(self.character, containerType, self.searchTarget.displayName, currentContainer.container:getNumberOfItem(item:getFullType(), false, true));
-
-                if self.takeItem then
-                end
             end
         end
         
