@@ -119,36 +119,53 @@ function ItemSearchPanel:createChildren()
     self.itemEntry.tooltip = "Press Enter / Return to identify your item"
     self:addChild(self.itemEntry);
 
-    self.searchOptions = ISTickBox:new(uiLeftPadding, searchInputYOffset + 25, 10, 10, "Search Where?", nil, nil);
-    self.searchOptions:initialise();
-    self.searchOptions:instantiate();
+    self.searchLocations = ISTickBox:new(uiLeftPadding, searchInputYOffset + 25, 10, 10, "Search Where?", nil, nil);
+    self.searchLocations:initialise();
+    self.searchLocations:instantiate();
 
-    self.searchOptions:addOption("Search Inventory");
-    self.searchOptions.selected[1] = true;
-    self.searchOptions:addOption("Search Nearby");
-    self.searchOptions.selected[2] = true;
-    self.searchOptions:addOption("Search Room");
+    self.searchLocations:addOption("Search Inventory");
+    self.searchLocations.selected[1] = true;
+    self.searchLocations:addOption("Search Nearby");
+    self.searchLocations.selected[2] = true;
+    self.searchLocations:addOption("Search Room");
 
     if not self:isPlayerInRoom() then
-        self.searchOptions:disableOption("Search Room", true);
-        self.searchOptions.tooltip = "Room search unavailable outside";
+        self.searchLocations:disableOption("Search Room", true);
+        self.searchLocations.tooltip = "Room search unavailable outside";
     else
-        self.searchOptions.selected[3] = true;
+        self.searchLocations.selected[3] = true;
     end
 
-    local oldOnMouseMove = self.searchOptions.onMouseMove;
-    self.searchOptions.onMouseMove = function(dx, dy) oldOnMouseMove(dx, dy) if self.mouseOverOption ~= 0 then self:updateSearchOptionsTooltipText() end end;
+    local oldOnMouseMove = self.searchLocations.onMouseMove;
+    self.searchLocations.onMouseMove = function(dx, dy) oldOnMouseMove(dx, dy) if self.mouseOverOption ~= 0 then self:updateSearchLocationsTooltipText() end end;
+
+    self:addChild(self.searchLocations);
+
+    local takeItemXOffset = textManager:MeasureStringX(UIFont.Small, "Search Inventory") + 20 + 30;
+    self.searchOptions = ISTickBox:new(uiLeftPadding + takeItemXOffset, searchInputYOffset + 25, 10, 10, "Take Item", nil, nil);
+    self.searchOptions:initialise();
+    self.searchOptions:instantiate();
+    self.searchOptions:addOption("Silent Search");
+    self.searchOptions.selected[1] = false;
+    self.searchOptions:addOption("Take Item");
+    self.searchOptions.selected[2] = true;
+
+    self.searchOptions.tooltip = "Queue an inventory transfer action if the item is found";
+
+    local oldOnMouseMoveOptions = self.searchOptions.onMouseMove;
+    self.searchOptions.onMouseMove = function(dx, dy) oldOnMouseMoveOptions(dx, dy) if self.mouseOverOption ~= 0 then self:updateSearchOptionsTooltipText() end end;
 
     self:addChild(self.searchOptions);
 
-    local takeItemXOffset = textManager:MeasureStringX(UIFont.Small, "Search Inventory") + 20 + 30;
-    self.takeItemOption = ISTickBox:new(uiLeftPadding + takeItemXOffset, searchInputYOffset + 25, 10, 10, "Take Item", nil, nil);
-    self.takeItemOption:initialise();
-    self.takeItemOption:instantiate();
-    self.takeItemOption:addOption("Take Item");
-    self.takeItemOption.selected[1] = false;
-    self.takeItemOption.tooltip = "Queue an inventory transfer action if the item is found";
-    self:addChild(self.takeItemOption);
+    local yOffset = searchingForTextYOffset;
+
+    if self.searchChoices ~= nil then
+        yOffset = yOffset + tableHeight + tableVerticalPadding + 5;
+    end
+
+    local searchingForLabel = ISLabel:new(uiLeftPadding, yOffset, SMALL_FONT, self:getSearchingForText(), 1, 1, 1, 1, UIFont.Small, true);
+    self.searchingForLabel = searchingForLabel;
+    self:addChild(self.searchingForLabel);
 
     self:createStartSearch();
 end
@@ -268,20 +285,18 @@ function ItemSearchPanel:getPatternMatches(searchText, itemsByDisplay)
 end
 
 function ItemSearchPanel:getSearchingForText()
-    local searchingFor = "Searching For: ";
+    local searchingFor = "Searching For: "
+
+    if ITEMSEARCH_PERSISTENT_DATA.searchTarget == nil then
+        return searchingFor  .. " Search item not set! Enter an unambiguous display name, or double-click a table result.";
+    end
 
     local searchTarget = ITEMSEARCH_PERSISTENT_DATA.searchTarget;
 
-    if searchTarget ~= nil then
-        local displayName = searchTarget.displayName;
-        local name = searchTarget.name;
+    local displayName = searchTarget.displayName;
+    local name = searchTarget.name;
 
-        searchingFor = searchingFor .. displayName .. " (Name: " .. name .. ")";
-    else
-        searchingFor = searchingFor .. " Search item not set! Enter an unambiguous display name, or double-click a table result.";
-    end
-
-    return searchingFor;
+    return searchingFor .. displayName .. " (Name: " .. name .. ")";
 end
 
 function ItemSearchPanel:isAdjacent(square)
@@ -325,12 +340,13 @@ function ItemSearchPanel:populateChoices(items)
 end
 
 function ItemSearchPanel:queueSearches()
-    local searchInventory = self.searchOptions.selected[1];
-    local searchNearby = self.searchOptions.selected[2];
-    local searchRoom = self.searchOptions.selected[3];
-    -- local searchBuilding = self.searchOptions.selected[4];
+    local searchInventory = self.searchLocations.selected[1];
+    local searchNearby = self.searchLocations.selected[2];
+    local searchRoom = self.searchLocations.selected[3];
+    -- local searchBuilding = self.searchLocations.selected[4];
 
-    local takeItem = self.takeItemOption.selected[1];
+    local silentSearch = self.searchOptions.selected[1];
+    local takeItem = self.searchOptions.selected[2];
 
     if not searchInventory and not searchNearby and not searchRoom then
         print("No search method selected");
@@ -341,11 +357,11 @@ function ItemSearchPanel:queueSearches()
     local searchTarget = ITEMSEARCH_PERSISTENT_DATA.searchTarget;
     -- function SearchInventoryAction:new(playerNum, character, inventory, searchTarget)
     if searchInventory then
-        ISTimedActionQueue.add(SearchInventoryAction:new(self.playerNum, self.character, searchTarget, false, takeItem));
+        ISTimedActionQueue.add(SearchInventoryAction:new(self.playerNum, self.character, searchTarget, false, silentSearch, takeItem));
     end
 
     if searchNearby then
-        ISTimedActionQueue.add(SearchInventoryAction:new(self.playerNum, self.character, searchTarget, true, takeItem));
+        ISTimedActionQueue.add(SearchInventoryAction:new(self.playerNum, self.character, searchTarget, true, silentSearch, takeItem));
     end
 
     if searchRoom then
@@ -356,14 +372,14 @@ function ItemSearchPanel:queueSearches()
 
         local room = square:getRoom();
 
-        if room == nil then
+        if room == nil and not silentSearch then
             self.character:Say("I'm not in a room to search!");
             return;
         end
         
         local consumedCells, containerCells, containerMap, sortedContainers = SearchRoomContainerAction.findRoomContainers(room, playerX, playerY);
 
-        if containerCells:size() == 0 then
+        if containerCells:size() == 0 and not silentSearch then
             self.character:Say("There's nothing to search in here.");
             return;
         end
@@ -381,7 +397,8 @@ function ItemSearchPanel:queueSearches()
         -- Queues the walk to the container square
         playerUtil.walkToContainer(self.character, representative);
         -- Queues the search
-        ISTimedActionQueue.add(SearchRoomContainerAction:new(self.character, searchTarget, takeItem, first, containerCells, containerMap, consumedCells));
+        local containerDetails = { containerCell = first, containerCells = containerCells, containerMap = containerMap, consumedCells = consumedCells };
+        ISTimedActionQueue.add(SearchRoomContainerAction:new(self.character, searchTarget, silentSearch, takeItem, containerDetails));
     end
 end
 
@@ -391,13 +408,7 @@ function ItemSearchPanel:recreateStartSearch()
 end
 
 function ItemSearchPanel:render()
-    local yOffset = searchingForTextYOffset;
-
-    if self.searchChoices ~= nil then
-        yOffset = yOffset + tableHeight + tableVerticalPadding + 5;
-    end
-
-    self:drawText(self:getSearchingForText(), uiLeftPadding, yOffset, 1, 1, 1, 1, UIFont.Small)
+    ISCollapsableWindow.render(self);
 end
 
 function ItemSearchPanel:removeStartSearch()
@@ -422,6 +433,7 @@ end
 function ItemSearchPanel:resetMatch()
     self:resetChoices();
     ITEMSEARCH_PERSISTENT_DATA.searchTarget = nil;
+    self.searchingForLabel:setName(self:getSearchingForText());
     self.startSearchButton.enable = false;
 end
 
@@ -433,6 +445,7 @@ function ItemSearchPanel:setSearchTarget(item)
 
     ITEMSEARCH_PERSISTENT_DATA.searchTarget = { displayName = displayName, name = name, fullType = fullType };
     -- TODO: Clear any previous searching data we stored related to the room, etc.
+    self.searchingForLabel:setName(self:getSearchingForText());
     self.startSearchButton.enable = true;
 end
 
@@ -445,16 +458,27 @@ function ItemSearchPanel:update()
     ISCollapsableWindow.update(self);
 end
 
+function ItemSearchPanel:updateSearchLocationsTooltipText()
+    local mousedOption = self.searchLocations.mouseOverOption;
+    if mousedOption == 1 then
+        self.searchLocations.tooltip = "Search your personal inventory";
+    elseif mousedOption == 2 then
+        self.searchLocations.tooltip = "Search nearby inventories";
+    elseif mousedOption == 3 and not self:isPlayerInRoom() then
+        self.searchLocations.tooltip = "Room search unavailable outside";
+    elseif mousedOption == 3 then
+        self.searchLocations.tooltip = "Search all room containers";
+    else
+        self.searchLocations.tooltip = nil;
+    end
+end
+
 function ItemSearchPanel:updateSearchOptionsTooltipText()
     local mousedOption = self.searchOptions.mouseOverOption;
     if mousedOption == 1 then
-        self.searchOptions.tooltip = "Search your personal inventory";
+        self.searchOptions.tooltip = "Search without saying anything";
     elseif mousedOption == 2 then
-        self.searchOptions.tooltip = "Search nearby inventories";
-    elseif mousedOption == 3 and not self:isPlayerInRoom() then
-        self.searchOptions.tooltip = "Room search unavailable outside";
-    elseif mousedOption == 3 then
-        self.searchOptions.tooltip = "Search all room containers";
+        self.searchOptions.tooltip = "Queue an inventory transfer action if the item is found";
     else
         self.searchOptions.tooltip = nil;
     end

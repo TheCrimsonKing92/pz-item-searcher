@@ -67,6 +67,10 @@ function SearchInventoryAction:perform()
 end
 
 function SearchInventoryAction:say(message)
+    if self.silentSearch then
+        return;
+    end
+
     self.character:Say(message);
 end
 
@@ -113,16 +117,19 @@ function SearchInventoryAction:searchInventory()
             local specificInventory, item = self:findItem(localInventory, displayName, name, fullType);
 
             if item ~= nil then
-                print("Found an item match in the container!");
-                -- Ask the InventoryContainer for the count, not including items that can be drained, recursing through inventory container items
-                count = specificInventory:getNumberOfItem(item:getFullType(), false, true);
+
+                if not self.silentSearch then
+                    -- Ask the InventoryContainer for the count, not including items that can be drained, recursing through inventory container items
+                    count = specificInventory:getNumberOfItem(item:getFullType(), false, true);
             
-                playerUtil.sayResult(self.character, containerType, displayName, count);
+                    playerUtil.sayResult(self.character, containerType, displayName, count);
+                end
         
                 return specificInventory, item;
             else
-                print("Didn't find an item match in the container");
-                playerUtil.sayResult(self.character, containerType, displayName, nil);
+                if not self.silentSearch then
+                    playerUtil.sayResult(self.character, containerType, displayName, nil);
+                end
             end
         end
     end
@@ -132,7 +139,7 @@ end
 
 function SearchInventoryAction:start()
     local toSay = "Let me check ";
-
+    
     if self.isNearby then
         toSay = toSay .. "nearby...";
     else
@@ -151,8 +158,9 @@ function SearchInventoryAction:start()
     self:setActionAnim("TransferItemOnSelf");
 end
 
-function SearchInventoryAction:new(playerNum, character, searchTarget, isNearby, takeItem)
+function SearchInventoryAction:new(playerNum, character, searchTarget, isNearby, silentSearch, takeItem)
     local o = ISBaseTimedAction.new(self, character);
+
     o.forceProgressBar = true;
     o.isNearby = isNearby or false;
 
@@ -182,6 +190,7 @@ function SearchInventoryAction:new(playerNum, character, searchTarget, isNearby,
 
     o.playerNum = playerNum;
     o.searchTarget = searchTarget;
+    o.silentSearch = silentSearch;
     o.stopOnWalk = true;
     o.stopOnRun = true;
     o.takeItem = takeItem;
