@@ -3,8 +3,31 @@ local Set = collectionUtil.Set;
 
 local PZISStringUtils = {};
 
+local alphas = {"a", "A", "b", "B", "c", "C", "d", "D", "e", "E", "f", "F", "g", "G", "h", "H", "i", "I", "j", "J", "k", "K", "l", 'L', 'm', 'M', 'n', 'N', 'o', 'O', 'p', 'P', 'q', 'Q', 'r', 'R', 's', 'S', 't', 'T', 'u', 'U', 'v', 'V', 'w', 'W', 'x', 'X', 'y', 'Y', 'z', 'Z'};
+local patternMagics = {"-"};
 local vowels = {"a", "A", "e", "E", "i", "I", "o", "O", "u", "U"};
+local ALPHA_SET = Set:new(alphas);
+local MAGIC_SET = Set:new(patternMagics);
 local VOWEL_SET = Set:new(vowels);
+
+function PZISStringUtils:createSearchPattern(input)
+    local patternTable = {};
+
+    for i = 1, #input do
+        local char = input:sub(i, i);
+
+        if ALPHA_SET:contains(char) then
+            local charPattern = {"[", char:lower(), char:upper(), "]"};
+            patternTable[#patternTable + 1] = table.concat(charPattern, "")
+        elseif MAGIC_SET:contains(char) then
+            patternTable[#patternTable + 1] = "%" .. char;
+        else
+            patternTable[#patternTable + 1] = char;
+        end
+    end
+    
+    return table.concat(patternTable, "");
+end
 
 function PZISStringUtils:endsWith(str, ending)
     return ending == "" or str:sub(-#ending) == ending;

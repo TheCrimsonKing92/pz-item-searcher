@@ -11,11 +11,6 @@ local SMALL_FONT = textManager:getFontHeight(UIFont.Small)
 local buttonHeight = SMALL_FONT + 2 * 4;
 local buttonWidth = 70;
 
-local alphas = {"a", "A", "b", "B", "c", "C", "d", "D", "e", "E", "f", "F", "g", "G", "h", "H", "i", "I", "j", "J", "k", "K", "l", 'L', 'm', 'M', 'n', 'N', 'o', 'O', 'p', 'P', 'q', 'Q', 'r', 'R', 's', 'S', 't', 'T', 'u', 'U', 'v', 'V', 'w', 'W', 'x', 'X', 'y', 'Y', 'z', 'Z'};
-local patternMagics = {"-"};
-local ALPHA_SET = Set:new(alphas);
-local MAGIC_SET = Set:new(patternMagics);
-
 ITEMSEARCH_PERSISTENT_DATA = {};
 ITEMSEARCH_PERSISTENT_DATA.displayNameSet = Set:new();
 ITEMSEARCH_PERSISTENT_DATA.itemsByDisplayName = {};
@@ -170,25 +165,6 @@ function ItemSearchPanel:createChildren()
     self:createStartSearch();
 end
 
-function ItemSearchPanel:createSearchPattern(input)
-    local patternTable = {};
-
-    for i = 1, #input do
-        local char = input:sub(i, i);
-
-        if ALPHA_SET:contains(char) then
-            local charPattern = {"[", char:lower(), char:upper(), "]"};
-            patternTable[#patternTable + 1] = table.concat(charPattern, "")
-        elseif MAGIC_SET:contains(char) then
-            patternTable[#patternTable + 1] = "%" .. char;
-        else
-            patternTable[#patternTable + 1] = char;
-        end
-    end
-    
-    return table.concat(patternTable, "");
-end
-
 function ItemSearchPanel:createStartSearch()
     if self.startSearchButton ~= nil then
         return;
@@ -274,7 +250,7 @@ end
 function ItemSearchPanel:getPatternMatches(searchText, itemsByDisplay)
     local displayName = nil;
 
-    local searchPattern = self:createSearchPattern(searchText);
+    local searchPattern = stringUtil:createSearchPattern(searchText);
     displayName = findBestMatch(string.len(searchText), searchPattern);
 
     if displayName ~= nil then
