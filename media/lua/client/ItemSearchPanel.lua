@@ -7,7 +7,7 @@ local playerUtil = require("PZISPlayerUtils");
 local stringUtil = require("PZISStringUtils");
 
 local textManager = getTextManager();
-local SMALL_FONT = textManager:getFontHeight(UIFont.Small)
+local SMALL_FONT = textManager:getFontHeight(UIFont.Small);
 local buttonHeight = SMALL_FONT + 2 * 4;
 local buttonWidth = 70;
 
@@ -32,6 +32,15 @@ local tableYOffset = 130;
 local searchingForTextYOffset = 130;
 
 local startSearchYOffset = 155;
+
+local SEARCH_MODE = {
+    RESTRICTED = 1,
+    HYBRID = 2,
+    UNRESTRICTED = 3
+};
+
+local SEARCH_MODE_COLORS = { { r = 1, g = 0, b = 0, a = 1 }, { r = 1, g = 1, b = 0, a = 1 }, { r = 0, g = 1, b = 0, a = 1 } };
+local SEARCH_MODE_NAMES = {"Restricted", "Hybrid", "Unrestricted"};
 
 ItemSearchPanel = ISCollapsableWindow:derive("ItemSearchPanel");
 
@@ -105,7 +114,7 @@ function ItemSearchPanel:createChildren()
 
     local inputWidth = 150;
     -- 10 is our left-margin, 8 to separate the box from the label, the rest from the text itself
-    -- title, x, y, width, height
+    -- Default value, x, y, width, height
     self.itemEntry = ISTextEntryBox:new("", uiLeftPadding + textSize + 8, searchInputYOffset - (buttonHeight / 6), inputWidth, buttonHeight);
     self.itemEntry.id = "Input";
     self.itemEntry:initialise();
@@ -114,26 +123,33 @@ function ItemSearchPanel:createChildren()
     self.itemEntry.tooltip = "Press Enter / Return to identify your item"
     self:addChild(self.itemEntry);
 
+    local currentSearchMode = self:getCurrentSandboxSearchMode();
+    local r, g, b, a = self:getSearchModeColors(currentSearchMode);
+    local searchModeName = SEARCH_MODE_NAMES[currentSearchMode];
+    local searchModeLabel = ISLabel:new(uiLeftPadding + textSize + 8 + inputWidth + 8, searchInputYOffset, SMALL_FONT, searchModeName .. " Search Mode", r, g, b, a, UIFont.Small, true);
+    searchModeLabel.tooltip = self:getSearchModeLabelTooltip(searchModeName);
+    searchModeLabel:initialise();
+    searchModeLabel:instantiate();
+    self.searchModeLabel = searchModeLabel;
+    self:addChild(searchModeLabel);
+
     self.searchLocations = ISTickBox:new(uiLeftPadding, searchInputYOffset + 25, 10, 10, "Search Where?", nil, nil);
     self.searchLocations:initialise();
     self.searchLocations:instantiate();
-
     self.searchLocations:addOption("Search Inventory");
     self.searchLocations.selected[1] = true;
     self.searchLocations:addOption("Search Nearby");
     self.searchLocations.selected[2] = true;
     self.searchLocations:addOption("Search Room");
 
-    if not self:isPlayerInRoom() then
+    if self:shouldRoomSearchBeRestricted() then
         self.searchLocations:disableOption("Search Room", true);
-        self.searchLocations.tooltip = "Room search unavailable outside";
     else
         self.searchLocations.selected[3] = true;
     end
 
     local oldOnMouseMove = self.searchLocations.onMouseMove;
     self.searchLocations.onMouseMove = function(dx, dy) oldOnMouseMove(dx, dy) if self.mouseOverOption ~= 0 then self:updateSearchLocationsTooltipText() end end;
-
     self:addChild(self.searchLocations);
 
     local takeItemXOffset = textManager:MeasureStringX(UIFont.Small, "Search Inventory") + 20 + 30;
@@ -144,8 +160,6 @@ function ItemSearchPanel:createChildren()
     self.searchOptions.selected[1] = false;
     self.searchOptions:addOption("Take Item");
     self.searchOptions.selected[2] = true;
-
-    self.searchOptions.tooltip = "Queue an inventory transfer action if the item is found";
 
     local oldOnMouseMoveOptions = self.searchOptions.onMouseMove;
     self.searchOptions.onMouseMove = function(dx, dy) oldOnMouseMoveOptions(dx, dy) if self.mouseOverOption ~= 0 then self:updateSearchOptionsTooltipText() end end;
@@ -159,6 +173,8 @@ function ItemSearchPanel:createChildren()
     end
 
     local searchingForLabel = ISLabel:new(uiLeftPadding, yOffset, SMALL_FONT, self:getSearchingForText(), 1, 1, 1, 1, UIFont.Small, true);
+    searchingForLabel:initialise();
+    searchingForLabel:instantiate();
     self.searchingForLabel = searchingForLabel;
     self:addChild(self.searchingForLabel);
 
@@ -168,8 +184,7 @@ end
 function ItemSearchPanel:createStartSearch()
     if self.startSearchButton ~= nil then
         return;
-    end
-    
+    end    
 
     local buttonCallback = function()
         self:startSearch();
@@ -209,6 +224,10 @@ function ItemSearchPanel:endMatch(matches)
         -- Future feature: Allow the player to search for only the display name, allowing any variation to resolve the search
         self:setSearchTarget(matches[1]);
     end
+end
+
+function ItemSearchPanel:getCurrentSandboxSearchMode()
+    return SandboxVars.ItemSearcher.SearchMode or SEARCH_MODE.RESTRICTED;
 end
 
 function ItemSearchPanel:getExactMatches(searchText, itemsByDisplay, nameSet)
@@ -260,6 +279,10 @@ function ItemSearchPanel:getPatternMatches(searchText, itemsByDisplay)
     end
 end
 
+function ItemSearchPanel:getPlayerSafehouse()
+    return SafeHouse.hasSafehouse(self.player);
+end
+
 function ItemSearchPanel:getSearchingForText()
     local searchingFor = "Searching For: "
 
@@ -273,6 +296,23 @@ function ItemSearchPanel:getSearchingForText()
     local name = searchTarget.name;
 
     return searchingFor .. displayName .. " (Name: " .. name .. ")";
+end
+
+function ItemSearchPanel:getSearchModeColors(mode)
+    local searchMode = mode or self:getCurrentSandboxSearchMode();
+    local colors = SEARCH_MODE_COLORS[searchMode];
+
+    return colors.r, colors.g, colors.b, colors.a;
+end
+
+function ItemSearchPanel:getSearchModeLabelTooltip(searchModeName)
+    if "Restricted" == searchModeName then
+        return "Room search is only usable in your safehouse";
+    elseif "Hybrid" == searchModeName then
+        return  "Search anywhere but someone else's safehouse";
+    else
+        return "Search where you please!";
+    end
 end
 
 function ItemSearchPanel:isAdjacent(square)
@@ -292,15 +332,64 @@ function ItemSearchPanel:isAdjacent(square)
 
     if yDiff == 0 and (xDiff == -1 or xDiff == 1) then
         return true;
-    elseif xDiff == 00 and (yDiff == -1 or yDiff == 1) then
+    elseif xDiff == 0 and (yDiff == -1 or yDiff == 1) then
         return true;
     else
         return false;
     end
 end
 
+function ItemSearchPanel:isHybridMode()
+    return SEARCH_MODE.HYBRID == self:getCurrentSandboxSearchMode();
+end
+
+function ItemSearchPanel:isPlayerInOtherSafehouse()
+    if not isClient() then
+        return false;
+    end
+
+    local square = self.character:getSquare();
+    local safeHouse = SafeHouse.getSafeHouse(square);
+
+    if safeHouse == nil then
+        return false;
+    end
+
+    local username = self.character:getUsername();
+    -- This bypasses the special privileges that admins have
+    local playerAllowed = safeHouse:playerAllowed(username);
+
+    return not playerAllowed;
+end
+
 function ItemSearchPanel:isPlayerInRoom()
     return self.character:getSquare():getRoom() ~= nil
+end
+
+function ItemSearchPanel:isPlayerInTheirSafehouse()
+    local square = self.character:getSquare();
+    local safehouse = self:getPlayerSafehouse();
+
+    -- Player doesn't have a safehouse
+    if safehouse == nil then
+        return false;
+    end
+    
+    local squareX = square:getX();
+    local squareY = square:getY();
+
+    return squareX >= safehouse:getX() and
+           squareX < safehouse:getX2() and
+           squareY >= safehouse:getY() and
+           squareY < safehouse:getY2();
+end
+
+function ItemSearchPanel:isRestrictedMode()
+    return SEARCH_MODE.RESTRICTED == self:getCurrentSandboxSearchMode();
+end
+
+function ItemSearchPanel:isUnrestrictedMode()
+    return SEARCH_MODE.UNRESTRICTED == self:getCurrentSandboxSearchMode();
 end
 
 function ItemSearchPanel:populateChoices(items)
@@ -425,6 +514,16 @@ function ItemSearchPanel:setSearchTarget(item)
     self.startSearchButton.enable = true;
 end
 
+function ItemSearchPanel:shouldRoomSearchBeRestricted()
+    if self:isRestrictedMode() then
+        return not self:isPlayerInTheirSafehouse();
+    elseif self:isHybridMode() then
+        return self:isPlayerInOtherSafehouse();
+    else
+        return not self:isPlayerInRoom();
+    end
+end
+
 function ItemSearchPanel:startSearch()
     self:queueSearches();
     self:close();
@@ -440,10 +539,16 @@ function ItemSearchPanel:updateSearchLocationsTooltipText()
         self.searchLocations.tooltip = "Search your personal inventory";
     elseif mousedOption == 2 then
         self.searchLocations.tooltip = "Search nearby inventories";
-    elseif mousedOption == 3 and not self:isPlayerInRoom() then
-        self.searchLocations.tooltip = "Room search unavailable outside";
     elseif mousedOption == 3 then
-        self.searchLocations.tooltip = "Search all room containers";
+        if self:isRestrictedMode() and not self:isPlayerInTheirSafehouse() then
+            self.searchLocations.tooltip = "Searching is only allowed in your safehouse";
+        elseif self:isHybridMode() and self:isPlayerInOtherSafehouse() then
+            self.searchLocations.tooltip = "Searching is not allowed in other safehouses";
+        elseif not self:isPlayerInRoom() then
+            self.searchLocations.tooltip = "Room search unavailable outside";
+        else
+            self.searchLocations.tooltip = "Search all room containers";
+        end
     else
         self.searchLocations.tooltip = nil;
     end

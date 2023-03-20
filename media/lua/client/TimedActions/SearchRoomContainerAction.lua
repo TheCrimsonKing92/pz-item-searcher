@@ -233,7 +233,12 @@ function SearchRoomContainerAction:update()
             if not self.silentSearch then              
                 playerUtil.say(self.character, "Let me nab that...");
             end
-            ISTimedActionQueue.add(self.transferItemAction);     
+
+            if self.transferItemAction ~= nil then
+                ISTimedActionQueue.add(self.transferItemAction);    
+                self.transferItemAction = nil; 
+            end
+
             return;
         end
     end
@@ -271,7 +276,7 @@ function SearchRoomContainerAction:update()
                 end
             else
                 self.foundItem = true;
-                self.transferItemAction = ISInventoryTransferAction:new(self.character, item, item:getContainer(), self.character:getInventory());
+                self.transferItemAction = objectUtil:generateTransferAction(self.character, item, item:getContainer(), self.character:getInventory());
 
                 -- Ask the InventoryContainer for the count, not including items that can be drained, recursing through inventory container items
                 if not self.silentSearch then

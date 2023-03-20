@@ -1,0 +1,11 @@
+VERSION = 1,
+
+option ItemSearcher.SearchMode
+{
+    type = enum,
+    default = 3,
+    numValues = 3,
+    page = PZISTitle,
+    valueTranslation = PZISSearchModeOptionValues,
+    translation = PZISSearchMode,
+}
