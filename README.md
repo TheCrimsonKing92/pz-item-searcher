@@ -22,4 +22,7 @@ ItemSearcher begins life with a default SearchMode value of 3, meaning searching
 * Find your sandbox variables file (for example, servertest's file lives at *\Zomboid\Server\servertest_SandboxVars.lua)
 * Find the ItemSearcher block
 * Find the SearchMode entry
-* Tweak the value to your liking: 1 - Restricted Mode; searching is only allowed in your safehouse, 2 - Hybrid Mode; searching is allowed outside of others' safehouses, 3 - Unrestricted Mode; searching is allowed anywhere.
+* Tweak the value to your liking:
+    * 1 - Restricted Mode; searching is only allowed in your safehouse
+    * 2 - Hybrid Mode; searching is allowed outside of others' safehouses
+    * 3 - Unrestricted Mode; searching is allowed anywhere.
