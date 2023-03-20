@@ -8,6 +8,7 @@ SearchInventoryAction.searchSoundTime = 0;
 
 local collectionUtil = require("PZISCollectionUtils");
 local Set = collectionUtil.Set;
+local objectUtil = require("PZISObjectUtils");
 local playerUtil = require("PZISPlayerUtils");
 local stringUtil = require("PZISStringUtils");
 
@@ -59,7 +60,7 @@ function SearchInventoryAction:perform()
 
         if self.takeItem then
             self:say("Let me nab that...");
-            ISTimedActionQueue.add(ISInventoryTransferAction:new(self.character, item, inventory, self.character:getInventory()));
+            ISTimedActionQueue.add(objectUtil:generateTransferAction(self.character, item, inventory, self.character:getInventory()));
         end
     end
 

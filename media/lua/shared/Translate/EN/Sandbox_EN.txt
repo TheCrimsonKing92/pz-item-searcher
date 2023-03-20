@@ -1,0 +1,8 @@
+Sandbox_EN = {
+    Sandbox_PZISTitle = "Item Searcher",
+    
+    Sandbox_PZISSearchMode = "Search Mode",
+    Sandbox_PZISSearchModeOptionValues_option1 = "Restricted - search only in your safehouse",
+    Sandbox_PZISSearchModeOptionValues_option2 = "Hybrid - search in your safehouse, or non-safehouses",
+    Sandbox_PZISSearchModeOptionValues_option3 = "Unrestricted - search anywhere"
+}
