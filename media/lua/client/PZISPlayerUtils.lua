@@ -26,28 +26,37 @@ PZISPlayerUtils.getFailureMessage = function(inventoryType, displayName)
 end
 
 PZISPlayerUtils.getFailurePrefix = function(displayName)
-    local message = "I couldn't find";
+    local textId = "IGUI_PZIS_SearchResult_Failure_Prefix_";
 
-    if not stringUtil:endsWith(displayName, "s") then
-        if stringUtil:startsWithVowel(displayName) then
-            message = message .. " an";
-        else
-            message = message .. " a";
-        end
+    if stringUtil:endsWith(displayName, "s") then
+        textId = textId .. "Plural";
+        return getText(textId);
     else
-        message = message .. " any";
-    end
+        textId = textId .. "Singular";
+        local article;
 
-    return message;
+        if stringUtil:startsWithVowel(displayName) then
+            article = "an";
+        else
+            article = "a";
+        end
+
+        return getText(textId, article);
+    end
 end
 
 PZISPlayerUtils.getFailureSuffix = function(inventoryType)
+    local textId = "IGUI_PZIS_SearchResult_Failure_Suffix_";
+
     if PZISPlayerUtils.isPlayerHeld(inventoryType) then
-        return "in my " .. inventoryType;
+        textId = textId .. "Player";
+        return getText(textId, inventoryType);
     elseif inventoryType == "floor" then
-        return "on the " .. inventoryType;
+        textId = textId .. "Floor";
+        return getText(textId);
     else
-        return "in the " .. objectUtil:getContainerNameByType(inventoryType);
+        textId = textId .. "Container";
+        return getText(textId, objectUtil:getContainerNameByType(inventoryType));
     end
 end
 
@@ -107,60 +116,64 @@ PZISPlayerUtils.getSuccessMessage = function(inventoryType, displayName, count)
 end
 
 PZISPlayerUtils.getSuccessPrefix = function(inventoryType, displayName, count)
+    local textId = "IGUI_PZIS_SearchResult_Success_Prefix_";
     local isPlural = count > 1;
-    local prefixParts = {};
 
     if isPlural then
-        table.insert(prefixParts, "Aha, I found some!");
+        textId = textId .. "Plural";
     else
-        table.insert(prefixParts, "Aha, I found it!");
+        textId = textId .. "Singular";
     end
+
+    -- Treat as plural if the count is 1 but the display name ends with "s"
+    local effectivelyPlural = isPlural or stringUtil:endsWith(displayName, "s");
+    local successSource = PZISPlayerUtils.getSuccessPrefixSource(inventoryType, effectivelyPlural);
+    local article = PZISPlayerUtils.getSuccessPrefixArticle(effectivelyPlural, count, displayName);
+
+    return getText(textId, successSource, article);
+end
+
+PZISPlayerUtils.getSuccessPrefixArticle = function(isPlural, count, displayName)
+    if isPlural then
+        return count;
+    end
+
+    if stringUtil:startsWithVowel(displayName) then
+        return "an";
+    else
+        return "a";
+    end
+end
+
+PZISPlayerUtils.getSuccessPrefixSource = function(inventoryType, isPlural)
+    local textId = "IGUI_PZIS_SearchResult_Success_Prefix_Source_";
 
     if PZISPlayerUtils.isPlayerHeld(inventoryType) then
-        table.insert(prefixParts, "I have");
+        textId = textId .. "Player";
     else
         if isPlural then
-            table.insert(prefixParts, "There are");
+            textId = textId .. "Container_Plural";
         else
-            table.insert(prefixParts, "There is");
+            textId = textId .. "Container_Singular";
         end
     end
 
-    if isPlural then
-        table.insert(prefixParts, count);
-    else
-        if stringUtil:startsWithVowel(displayName) then
-            table.insert(prefixParts, "an");
-        else
-            table.insert(prefixParts, "a");
-        end
-    end
-
-    return spaceConcat(prefixParts);
+    return getText(textId);
 end
 
 PZISPlayerUtils.getSuccessSuffix = function(inventoryType)
-    local suffixParts = {};
+    local textId = "IGUI_PZIS_SearchResult_Success_Suffix_";
 
-    if inventoryType == "floor" then
-        table.insert(suffixParts, "on");
+    if "floor" == inventoryType then
+        textId = textId .. "Floor";
+        return getText(textId);
+    elseif PZISPlayerUtils.isPlayerHeld(inventoryType) then
+        textId = textId .. "Player";
+        return getText(textId, inventoryType);
     else
-        table.insert(suffixParts, "in");
+        textId = textId .. "Container";
+        return getText(textId, objectUtil:getContainerNameByType(inventoryType));
     end
-
-    if inventoryType == "backpack" or inventoryType == "inventory" then
-        table.insert(suffixParts, "my");
-    else
-        table.insert(suffixParts, "the");
-    end
-
-    if inventoryType == "floor" or inventoryType == "inventory" or inventoryType == "backpack" then
-        table.insert(suffixParts, inventoryType);
-    else
-        table.insert(suffixParts, objectUtil:getContainerNameByType(inventoryType));
-    end
-
-    return spaceConcat(suffixParts);
 end
 
 PZISPlayerUtils.isPlayerHeld = function(inventoryType)
@@ -189,11 +202,15 @@ PZISPlayerUtils.sayStart = function(character, containerType, containerItemCount
     local containerName = objectUtil:getContainerNameByType(containerType);
     local playerHeld = PZISPlayerUtils.isPlayerHeld(containerType);
 
+    local textId = "IGUI_PZIS_StartSearch_RoomContainer";
+
     if containerItemCount > 0 then
-        message = "Hm, let's see what's in this " .. containerName;
+        textId = textId .. "WithItems";
     else
-        message = "I don't think there's anything in this " .. containerName;
+        textId = textId .. "Empty";
     end
+    
+    message = getText(textId, containerName);
 
     PZISPlayerUtils.say(character, message);
 end

@@ -141,7 +141,6 @@ end
 
 function SearchRoomContainerAction:perform()
     if not self.foundItem then
-        -- displayName, name, fullType
         local consumedCells = self.consumedCells;
         local containerCell = self.containerCell;
         local containerCells = self.containerCells;
@@ -189,7 +188,15 @@ function SearchRoomContainerAction:queueNext()
 end
 
 function SearchRoomContainerAction:say(message)
+    if self.silentSearch then
+        return;
+    end
+
     self.character:Say(message);
+end
+
+function SearchRoomContainerAction:setNextContainer()
+    self.currentContainer = table.remove(self.containerUpdateQueue, 1);
 end
 
 function SearchRoomContainerAction:sortContainers()
@@ -200,7 +207,11 @@ function SearchRoomContainerAction:sortContainers()
     return SearchRoomContainerAction.sortContainersFromCharacterPoint(self.containerCells, self.consumedCells, playerX, playerY);
 end
 
-function SearchRoomContainerAction:start()
+function SearchRoomContainerAction:start()    
+    if not self.silentSearch then
+        self:say("Alright, let's see what's in here...");
+    end
+
     if not SearchRoomContainerAction.searchSound or not self.character:getEmitter():isPlaying(SearchRoomContainerAction.searchSound) then
         if SearchRoomContainerAction.searchSoundTime + SearchRoomContainerAction.searchSoundDelay < getTimestamp() then
             SearchRoomContainerAction.searchSoundTime = getTimestamp();
@@ -217,7 +228,8 @@ function SearchRoomContainerAction:startContainerSearch()
     local containerType = currentContainer.container:getType();
     local containerItemCount = currentContainer.itemCount;
 
-    if not self.silentSearch then
+    -- TODO Remove this hack
+    if not self.silentSearch and containerItemCount < 1 then
         playerUtil.sayStart(self.character, containerType, containerItemCount);        
     end
 
@@ -251,7 +263,7 @@ function SearchRoomContainerAction:update()
     self.currentSearchTimer = self.currentSearchTimer + getGameTime():getMultiplier();
 
     if self.currentContainer == nil and #self.containerUpdateQueue > 0 then
-        self.currentContainer = table.remove(self.containerUpdateQueue, 1);
+        self:setNextContainer();
         self.startOfContainerSearch = true;
     end
 
@@ -356,6 +368,9 @@ function SearchRoomContainerAction:new(character, searchTarget, silentSearch, ta
     end
 
     o.containerUpdateQueue = containerUpdateQueue;
+
+    -- Reassign currentContainer now that we have the containerUpdateQueue initialized
+    o:setNextContainer();
 
     if o.character:isTimedActionInstant() then
         o.maxTime = 1;

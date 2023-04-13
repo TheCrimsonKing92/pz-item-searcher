@@ -1,0 +1,26 @@
+IGUI_EN = {
+    IGUI_PZIS_SearchResult_Failure = "I couldn't find %1",
+    IGUI_PZIS_SearchResult_Success = "I found %1!",
+
+    IGUI_PZIS_SearchResult_Failure_Prefix_Plural = "I couldn't find any",
+    IGUI_PZIS_SearchResult_Failure_Prefix_Singular = "I couldn't find %1",
+    IGUI_PZIS_SearchResult_Failure_Suffix_Container = "in the %1.",
+    IGUI_PZIS_SearchResult_Failure_Suffix_Floor = "on the floor.",
+    IGUI_PZIS_SearchResult_Failure_Suffix_Player = "in my %1.",
+
+    IGUI_PZIS_SearchResult_Success_Prefix_Plural = "Aha, I found some! %1 %2",
+    IGUI_PZIS_SearchResult_Success_Prefix_Singular = "Aha, I found it! %1 %2",
+    IGUI_PZIS_SearchResult_Success_Prefix_Source_Container_Plural = "There are",
+    IGUI_PZIS_SearchResult_Success_Prefix_Source_Container_Singular = "There is",
+    IGUI_PZIS_SearchResult_Success_Prefix_Source_Player = "I have",
+
+    IGUI_PZIS_SearchResult_Success_Suffix_Container = "in the %1.",
+    IGUI_PZIS_SearchResult_Success_Suffix_Floor = "on the floor.",
+    IGUI_PZIS_SearchResult_Success_Suffix_Player = "in my %1.",
+
+    IGUI_PZIS_StartSearch_Generic = "Let's get started!",
+    IGUI_PZIS_StartSearch_Generic2 = "Now, where is it...",
+    IGUI_PZIS_StartSearch_Locale = "Hm, let me check %1...",
+    IGUI_PZIS_StartSearch_RoomContainerEmpty = "I don't think there's anything in this %1.",
+    IGUI_PZIS_StartSearch_RoomContainerWithItems = "Hm, let's see what's in this %1...",
+}

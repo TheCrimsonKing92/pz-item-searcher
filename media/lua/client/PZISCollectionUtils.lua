@@ -10,6 +10,19 @@ function Set:contains(key)
     return self[key] ~= nil;
 end
 
+function Set:intersect(otherSet)
+    local intersection = Set:new();
+
+    for k, _ in pairs(self) do
+        if otherSet:contains(k) then
+            intersection:add(k);
+        end
+    end
+
+    return intersection;
+end
+
+
 function Set:merge(otherSet)
     for k, _ in pairs(otherSet) do
         self:add(k);
