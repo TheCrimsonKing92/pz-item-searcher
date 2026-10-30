@@ -1,0 +1,5 @@
+return {
+    default = {
+        lpath = "media/lua/client/?.lua;media/lua/shared/?.lua",
+    },
+}
