@@ -39,4 +39,15 @@ function M.uninstall(previous)
     _G.ISInventoryTransferAction = previous.ISInventoryTransferAction.value
 end
 
+function M.newRecordingCharacter()
+    return {
+        said = {},
+        sayCount = 0,
+        Say = function(self, message)
+            self.sayCount = self.sayCount + 1
+            self.said[self.sayCount] = message
+        end,
+    }
+end
+
 return M
